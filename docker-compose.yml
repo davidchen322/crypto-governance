@@ -1,0 +1,148 @@
+# Local zero-cost sandbox for the Crypto Governance Intelligence Platform.
+#
+# No top-level `version:` key — it is obsolete under Compose v2 and only emits a warning.
+#
+# Healthchecks here exist to sequence startup, not to prove correctness. Real verification
+# lives in tests/integration/, which exercises each service's actual code path.
+
+name: crypto-gov
+
+services:
+
+  # --- Relational + vector storage ---------------------------------------
+  # Hosts three databases: application vectors, the Iceberg catalog's JDBC backend,
+  # and (from Phase 7) Airflow metadata.
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: gov_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-engineer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
+      POSTGRES_DB: ${POSTGRES_VECTOR_DB:-gov_vectors}
+      POSTGRES_CATALOG_DB: ${POSTGRES_CATALOG_DB:-iceberg_catalog}
+      POSTGRES_AIRFLOW_DB: ${POSTGRES_AIRFLOW_DB:-airflow}
+    ports:
+      # Non-default host port: 5432 usually collides with a local Postgres install.
+      - "${POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      # Runs after 00-create-databases.sh (initdb.d executes alphabetically).
+      - ./storage/vector_schema.sql:/docker-entrypoint-initdb.d/01-vector-schema.sql:ro
+    healthcheck:
+      # Liveness only. pg_isready succeeds well before the extension exists, which is
+      # why tests/integration asserts on `vector` separately.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-engineer} -d ${POSTGRES_VECTOR_DB:-gov_vectors}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # --- Local S3 -----------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: gov_minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # --- Bucket bootstrap ---------------------------------------------------
+  # Without this the warehouse bucket never exists and Iceberg writes fail. Runs once
+  # and exits; `docker compose down -v && up` re-runs it, which is what makes the
+  # stack reproducible from zero rather than dependent on a bucket someone made by hand.
+  minio-init:
+    image: minio/mc:latest
+    container_name: gov_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-warehouse}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/$${MINIO_BUCKET} &&
+      echo 'bucket ready: '$${MINIO_BUCKET}
+      "
+    restart: "no"
+
+  # --- Iceberg REST catalog ----------------------------------------------
+  # Backed by Postgres. The stock configuration uses an in-container SQLite file, which
+  # loses every table on `docker compose down` — the failure this stack must not have.
+  iceberg-rest:
+    image: apache/iceberg-rest-fixture:1.6.0
+    container_name: gov_iceberg_rest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      CATALOG_CATALOG__IMPL: org.apache.iceberg.jdbc.JdbcCatalog
+      CATALOG_URI: jdbc:postgresql://postgres:5432/${POSTGRES_CATALOG_DB:-iceberg_catalog}
+      CATALOG_JDBC_USER: ${POSTGRES_USER:-engineer}
+      CATALOG_JDBC_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
+      CATALOG_WAREHOUSE: s3://${MINIO_BUCKET:-warehouse}/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://minio:9000
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+    ports:
+      - "${ICEBERG_REST_PORT:-8181}:8181"
+    healthcheck:
+      # TCP liveness for ordering. tests/integration hits /v1/config for the real assertion.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8181"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  # --- Spark --------------------------------------------------------------
+  # Local mode, not a master/worker pair: fewer moving parts to debug, and the cluster
+  # topology adds nothing until there is data volume to justify it.
+  spark:
+    build:
+      context: ./docker/spark
+    image: crypto-gov/spark-iceberg:3.5.3
+    container_name: gov_spark
+    depends_on:
+      iceberg-rest:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+    volumes:
+      - ./data_pipeline:/opt/app/data_pipeline:ro
+      - ./storage:/opt/app/storage:ro
+    command: ["sleep", "infinity"]
+    healthcheck:
+      # Asserts the Iceberg jars actually made it into the image — a silently broken
+      # build would otherwise look healthy until the first query.
+      test: ["CMD-SHELL", "ls /opt/spark/jars/iceberg-spark-runtime-*.jar /opt/spark/jars/iceberg-aws-bundle-*.jar"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+
+volumes:
+  pgdata:
+  minio_data:
