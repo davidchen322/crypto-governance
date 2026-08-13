@@ -67,8 +67,15 @@ def run_spark_sql(sql: str, timeout: int = 420) -> str:
     """
     proc = subprocess.run(
         [
-            "docker", "compose", "exec", "-T", "spark",
-            "spark-sql", "--silent", "-e", sql,
+            "docker",
+            "compose",
+            "exec",
+            "-T",
+            "spark",
+            "spark-sql",
+            "--silent",
+            "-e",
+            sql,
         ],
         cwd=REPO,
         capture_output=True,
@@ -78,6 +85,8 @@ def run_spark_sql(sql: str, timeout: int = 420) -> str:
     if proc.returncode != 0:
         raise AssertionError(
             f"spark-sql failed (exit {proc.returncode})\n"
-            f"--- SQL ---\n{sql}\n--- stdout ---\n{proc.stdout}\n--- stderr ---\n{proc.stderr[-4000:]}"
+            f"--- SQL ---\n{sql}\n"
+            f"--- stdout ---\n{proc.stdout}\n"
+            f"--- stderr ---\n{proc.stderr[-4000:]}"
         )
     return proc.stdout

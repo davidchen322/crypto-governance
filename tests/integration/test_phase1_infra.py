@@ -28,6 +28,7 @@ CATALOG = "gov"
 # Postgres
 # --------------------------------------------------------------------------
 
+
 def test_postgres_accepts_host_connections(pg_dsn):
     """Probed from the host, so a broken port mapping fails here."""
     import psycopg
@@ -41,14 +42,10 @@ def test_pgvector_extension_is_usable(pg_dsn):
     import psycopg
 
     with psycopg.connect(pg_dsn, connect_timeout=10) as conn:
-        installed = conn.execute(
-            "SELECT 1 FROM pg_extension WHERE extname = 'vector'"
-        ).fetchone()
+        installed = conn.execute("SELECT 1 FROM pg_extension WHERE extname = 'vector'").fetchone()
         assert installed, "the `vector` extension is not installed in the vector database"
 
-        distance = conn.execute(
-            "SELECT '[1,2,3]'::vector <=> '[3,2,1]'::vector"
-        ).fetchone()[0]
+        distance = conn.execute("SELECT '[1,2,3]'::vector <=> '[3,2,1]'::vector").fetchone()[0]
         assert 0.0 < float(distance) < 1.0, f"cosine operator returned {distance!r}"
 
 
@@ -61,8 +58,7 @@ def test_hnsw_index_can_be_built(pg_dsn):
         conn.execute("CREATE TABLE _probe_vectors (id int, embedding vector(3))")
         conn.execute("INSERT INTO _probe_vectors VALUES (1, '[1,2,3]'), (2, '[4,5,6]')")
         conn.execute(
-            "CREATE INDEX _probe_hnsw ON _probe_vectors "
-            "USING hnsw (embedding vector_cosine_ops)"
+            "CREATE INDEX _probe_hnsw ON _probe_vectors USING hnsw (embedding vector_cosine_ops)"
         )
         nearest = conn.execute(
             "SELECT id FROM _probe_vectors ORDER BY embedding <=> '[1,2,3]' LIMIT 1"
@@ -85,6 +81,7 @@ def test_all_three_databases_exist(pg_dsn):
 # MinIO
 # --------------------------------------------------------------------------
 
+
 def test_warehouse_bucket_exists(s3_client, bucket):
     """Catches the stack that only works because someone made the bucket by hand."""
     names = [b["Name"] for b in s3_client.list_buckets()["Buckets"]]
@@ -104,6 +101,7 @@ def test_minio_round_trip(s3_client, bucket):
 # Iceberg REST catalog
 # --------------------------------------------------------------------------
 
+
 def test_catalog_serves_the_rest_spec(catalog_uri):
     """An open TCP port is not a working catalog — this hits the real spec endpoint."""
     resp = requests.get(f"{catalog_uri}/v1/config", timeout=15)
@@ -117,6 +115,7 @@ def test_catalog_serves_the_rest_spec(catalog_uri):
 # --------------------------------------------------------------------------
 # Spark -> catalog -> MinIO, end to end
 # --------------------------------------------------------------------------
+
 
 @pytest.mark.seed
 def test_spark_writes_iceberg_table_through_catalog():

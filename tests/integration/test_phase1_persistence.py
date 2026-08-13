@@ -35,9 +35,7 @@ def test_catalog_metadata_survived_restart():
 
 
 def test_row_data_survived_restart():
-    out = run_spark_sql(
-        f"SELECT note FROM {CATALOG}.{SMOKE_NAMESPACE}.{SMOKE_TABLE} WHERE id = 1;"
-    )
+    out = run_spark_sql(f"SELECT note FROM {CATALOG}.{SMOKE_NAMESPACE}.{SMOKE_TABLE} WHERE id = 1;")
     assert SMOKE_ROW_NOTE in out, f"row did not survive restart:\n{out}"
 
 

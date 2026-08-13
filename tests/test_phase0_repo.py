@@ -15,18 +15,16 @@ import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 
-# Matches os.getenv("X"), os.environ["X"], os.environ.get("X")
-ENV_REF = re.compile(
-    r"""os\.(?:getenv\(|environ\.get\(|environ\[)\s*["']([A-Z][A-Z0-9_]*)["']"""
-)
+# Matches environment reads with a literal key: getenv, environ.get, environ[...]
+ENV_REF = re.compile(r"""os\.(?:getenv\(|environ\.get\(|environ\[)\s*["']([A-Z][A-Z0-9_]*)["']""")
 
-SOURCE_DIRS = ("ai_agent", "backend_api", "config", "data_pipeline", "tests")
+# Application code only. Tests carry their own local defaults and are not part of the
+# contract that .env.example documents.
+SOURCE_DIRS = ("ai_agent", "backend_api", "config", "data_pipeline")
 
 
 def _tracked_files() -> list[str]:
-    out = subprocess.run(
-        ["git", "ls-files"], cwd=REPO, capture_output=True, text=True, check=True
-    )
+    out = subprocess.run(["git", "ls-files"], cwd=REPO, capture_output=True, text=True, check=True)
     return out.stdout.splitlines()
 
 
