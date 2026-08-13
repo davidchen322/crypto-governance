@@ -1,0 +1,402 @@
+<title>Phases 0 and 1 Build Report</title>
+<style>
+  :root {
+    --ground:   #F1F4F3;
+    --surface:  #FFFFFF;
+    --sunken:   #E7ECEA;
+    --ink:      #16211F;
+    --muted:    #5B6B68;
+    --faint:    #8496921a;
+    --rule:     #D5DDDA;
+    --accent:   #1B5E59;
+    --accent-soft: #1b5e5914;
+    --signal:   #9A4A1C;
+    --signal-soft: #9a4a1c12;
+    --good:     #2F6B3C;
+    --good-soft: #2f6b3c14;
+
+    --f-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --f-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --f-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --measure: 68ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:   #0D1413;
+      --surface:  #151F1D;
+      --sunken:   #101817;
+      --ink:      #E3EAE7;
+      --muted:    #93A5A0;
+      --faint:    #93a5a014;
+      --rule:     #26332F;
+      --accent:   #5FBFB2;
+      --accent-soft: #5fbfb214;
+      --signal:   #D9895C;
+      --signal-soft: #d9895c14;
+      --good:     #74BE84;
+      --good-soft: #74be8414;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:   #0D1413;
+    --surface:  #151F1D;
+    --sunken:   #101817;
+    --ink:      #E3EAE7;
+    --muted:    #93A5A0;
+    --faint:    #93a5a014;
+    --rule:     #26332F;
+    --accent:   #5FBFB2;
+    --accent-soft: #5fbfb214;
+    --signal:   #D9895C;
+    --signal-soft: #d9895c14;
+    --good:     #74BE84;
+    --good-soft: #74be8414;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 16px;
+    line-height: 1.65;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell { max-width: 860px; margin: 0 auto; padding: 0 24px 110px; }
+
+  .masthead {
+    padding: 68px 0 36px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 44px;
+  }
+
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 18px;
+  }
+
+  h1 {
+    font-family: var(--f-display);
+    font-size: clamp(32px, 5vw, 48px);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+
+  .standfirst { font-size: 18px; color: var(--muted); max-width: 60ch; margin: 0; }
+
+  .verdict {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 28px;
+    padding: 9px 16px 9px 13px;
+    border: 1px solid var(--good);
+    background: var(--good-soft);
+    border-radius: 4px;
+    font-family: var(--f-mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--good);
+  }
+  .verdict .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--good); flex: none;
+  }
+
+  section { margin-bottom: 60px; scroll-margin-top: 24px; }
+
+  h2 {
+    font-family: var(--f-display);
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+
+  h3 { font-size: 15px; font-weight: 650; margin: 30px 0 8px; }
+
+  .section-note { color: var(--muted); font-size: 15px; margin: 0 0 24px; max-width: var(--measure); }
+
+  p { max-width: var(--measure); margin: 0 0 15px; }
+  ul, ol { max-width: var(--measure); padding-left: 20px; margin: 0 0 15px; }
+  li { margin-bottom: 6px; }
+  a { color: var(--accent); }
+
+  code {
+    font-family: var(--f-mono);
+    font-size: 0.875em;
+    background: var(--faint);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  pre {
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    margin: 0 0 20px;
+  }
+  pre code { background: none; padding: 0; font-size: 12.5px; line-height: 1.65; }
+
+  .scroller { overflow-x: auto; margin-bottom: 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th {
+    text-align: left;
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 0 14px 9px 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: bottom;
+  }
+  td { padding: 11px 14px 11px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  td:last-child, th:last-child { padding-right: 0; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .pass { color: var(--good); font-weight: 600; }
+  .fail { color: var(--signal); font-weight: 600; }
+
+  /* Step ledger — the sequence is real, so the numbering carries information */
+  .ledger { display: flex; flex-direction: column; gap: 0; margin: 0 0 8px; }
+  .ledger-row {
+    display: grid;
+    grid-template-columns: 46px 1fr auto;
+    gap: 16px;
+    align-items: baseline;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .ledger-row:first-child { border-top: 1px solid var(--rule); }
+  .ledger-n {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+  .ledger-what { font-size: 15px; min-width: 0; }
+  .ledger-r {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--good);
+    white-space: nowrap;
+  }
+
+  .deviation {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 22px 24px;
+    margin-bottom: 16px;
+  }
+  .deviation h3 { margin-top: 0; font-family: var(--f-display); font-size: 19px; font-weight: 600; }
+  .deviation p, .deviation pre { max-width: 62ch; }
+  .deviation pre { margin-bottom: 14px; }
+  .deviation > *:last-child { margin-bottom: 0; }
+
+  .callout {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--signal);
+    background: var(--signal-soft);
+    padding: 16px 18px;
+    border-radius: 0 5px 5px 0;
+    margin: 0 0 20px;
+    max-width: var(--measure);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .callout-label {
+    font-family: var(--f-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--signal);
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 20px;
+    font-size: 13px;
+    color: var(--muted);
+    max-width: var(--measure);
+  }
+</style>
+
+<div class="shell">
+
+  <header class="masthead">
+    <p class="eyebrow">Crypto Governance Intelligence Platform · Build Report</p>
+    <h1>Phases 0 and 1</h1>
+    <p class="standfirst">Repository skeleton and the local infrastructure stack, built against an acceptance harness written first. Four things differed from the plan — all four found by running it, not reading it.</p>
+    <div class="verdict"><span class="dot"></span>make verify → exit 0 · 31 tests</div>
+  </header>
+
+  <section>
+    <h2>Verdict</h2>
+    <p class="section-note">The harness exit code is the whole claim. Each step below had to pass before the next ran.</p>
+
+    <div class="ledger">
+      <div class="ledger-row"><span class="ledger-n">1 / 5</span><span class="ledger-what">Repository hygiene — secrets, env documentation, layout</span><span class="ledger-r">pass</span></div>
+      <div class="ledger-row"><span class="ledger-n">2 / 5</span><span class="ledger-what">Stack rebuilt from zero with volumes destroyed</span><span class="ledger-r">pass</span></div>
+      <div class="ledger-row"><span class="ledger-n">3 / 5</span><span class="ledger-what">Functional probes and Iceberg seed write</span><span class="ledger-r">pass</span></div>
+      <div class="ledger-row"><span class="ledger-n">4 / 5</span><span class="ledger-what">Containers cycled with <code>down</code>, volumes retained</span><span class="ledger-r">pass</span></div>
+      <div class="ledger-row"><span class="ledger-n">5 / 5</span><span class="ledger-what">Catalog metadata, table data, extension and bucket survived</span><span class="ledger-r">pass</span></div>
+    </div>
+    <p style="font-size:14px;color:var(--muted)">18 repo-hygiene tests · 9 infrastructure probes · 4 persistence assertions.</p>
+  </section>
+
+  <section>
+    <h2>What was built</h2>
+    <p class="section-note">Git was initialized (the directory was not a repository), PyCharm boilerplate removed, and the package layout from the implementation plan created. Toolchain is ruff, pytest, a Makefile entry point, and a two-job GitHub Actions workflow.</p>
+
+    <div class="scroller">
+      <table>
+        <thead><tr><th style="width:19%">Service</th><th style="width:29%">Image</th><th style="width:13%">Host port</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>postgres</td><td><code>pgvector/pgvector:pg16</code></td><td class="num">55432</td><td>Three databases; <code>vector</code> extension and <code>document_embeddings</code> applied at init</td></tr>
+          <tr><td>minio</td><td><code>minio/minio</code></td><td class="num">9000 / 9001</td><td>Named volume for data</td></tr>
+          <tr><td>minio-init</td><td><code>minio/mc</code></td><td class="num">—</td><td>One-shot; creates the <code>warehouse</code> bucket and exits 0</td></tr>
+          <tr><td>iceberg-rest</td><td><code>crypto-gov/iceberg-rest:1.9.2</code></td><td class="num">8181</td><td>Custom build; JDBC catalog backed by Postgres</td></tr>
+          <tr><td>spark</td><td><code>crypto-gov/spark-iceberg:3.5.3</code></td><td class="num">—</td><td>Local mode; Iceberg 1.9.2 jars baked in</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Deviations from the plan</h2>
+    <p class="section-note">Four, in the order they surfaced.</p>
+
+    <div class="deviation">
+      <h3>1 · The catalog image publishes no tag below 1.8.1</h3>
+      <p>The plan named <code>apache/iceberg-rest-fixture:1.6.0</code> to match Iceberg 1.6.1 Spark jars. That tag does not exist — the Apache image starts at 1.8.1. Both sides moved to <b>1.9.2</b> so the catalog and Spark runtime stay version-matched.</p>
+      <p>The plan's underlying advice held: <code>tabulario/iceberg-rest:1.6.0</code> does exist, but it is the unmaintained Tabular image. The Apache one is the right long-term choice.</p>
+    </div>
+
+    <div class="deviation">
+      <h3>2 · The catalog image has no Postgres JDBC driver</h3>
+      <p>The headline Phase 1 requirement — metadata surviving a restart — needs the catalog backed by Postgres rather than its default <code>jdbc:sqlite::memory:</code>. The stock image bundles only the SQLite driver:</p>
+      <pre><code>java.sql.SQLException: No suitable driver found for
+jdbc:postgresql://postgres:5432/iceberg_catalog</code></pre>
+      <p>Adding the driver is not sufficient on its own. The image's <code>CMD</code> is <code>java -jar iceberg-rest-adapter.jar</code>, and <code>-jar</code> makes the JVM ignore both <code>-cp</code> and <code>$CLASSPATH</code>. The custom Dockerfile adds the driver <em>and</em> replaces <code>CMD</code> with an explicit classpath invocation of the same main class.</p>
+    </div>
+
+    <div class="deviation">
+      <h3>3 · A file mount inside a read-only directory mount fails</h3>
+      <p>The first attempt mounted <code>storage/vector_schema.sql</code> into <code>/docker-entrypoint-initdb.d/</code>, a directory already mounted <code>:ro</code>:</p>
+      <pre><code>error mounting ... create mountpoint for
+/docker-entrypoint-initdb.d/01-vector-schema.sql
+mount: read-only file system</code></pre>
+      <p><code>storage/</code> is now mounted at <code>/opt/storage:ro</code> and the init script applies the DDL with <code>psql -f</code>, keeping <code>storage/</code> the single source of truth rather than duplicating schema into the docker directory.</p>
+    </div>
+
+    <div class="deviation">
+      <h3>4 · <code>apache/spark</code> leaves its bin directory off PATH</h3>
+      <p><code>docker compose exec spark spark-sql</code> fails with <em>executable file not found</em>. Fixed with an <code>ENV PATH</code> line in the image rather than hardcoding <code>/opt/spark/bin/spark-sql</code> in the test — the container should behave the way someone typing into it would expect.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>The negative control</h2>
+    <p class="section-note">A harness that always passes is worthless, so the suite was run against a deliberately broken stack: the catalog reverted to the source blueprint's ephemeral SQLite backing, everything else unchanged.</p>
+
+    <div class="scroller">
+      <table>
+        <thead><tr><th style="width:58%">Stage</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td><code>docker compose up --wait</code></td><td class="pass">passed — all five services healthy</td></tr>
+          <tr><td>Functional probes and Iceberg seed</td><td class="pass">passed — table created, Parquet in MinIO</td></tr>
+          <tr><td><code>down</code> then <code>up --wait</code></td><td class="pass">passed — stack healthy again</td></tr>
+          <tr><td>Persistence assertions</td><td class="fail">FAILED — TABLE_OR_VIEW_NOT_FOUND</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="callout-label">Why this matters</span>
+      <p>The broken stack reported <b>healthy at every stage</b> and passed <b>every probe that did not involve a restart</b>. Nothing short of tearing the containers down and asserting on what came back would have caught it — which is the entire argument for the harness being shaped this way.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>What the checks actually assert</h2>
+    <p class="section-note">None of them read <code>docker compose ps</code>.</p>
+
+    <h3>Phase 0 — 18 tests</h3>
+    <p>Git is initialized; <code>.env</code> is not tracked (a <code>.gitignore</code> entry added <em>after</em> staging does not untrack a file); every <code>os.getenv</code> key in application code appears in <code>.env.example</code>; every <code>${VAR}</code> in the compose file is documented; required files exist; <code>verify.sh</code> is executable.</p>
+
+    <h3>Phase 1 probes — 9 tests</h3>
+    <p>Postgres, MinIO and the catalog are probed <b>from the host</b>, so a broken port mapping fails. Spark is probed <b>inside its container</b>, since it reaches MinIO and the catalog over the compose network — the two views catch different classes of misconfiguration.</p>
+    <ul>
+      <li><code>pg_isready</code> is treated as liveness only. The real assertion runs pgvector's cosine operator and builds an HNSW index, which is what Phase 4 will depend on.</li>
+      <li>MinIO gets a write / read / delete round trip, not a <code>list_buckets</code> call.</li>
+      <li>The catalog is asserted via <code>GET /v1/config</code>, the actual REST spec endpoint. An open TCP port is not a working catalog.</li>
+      <li>Spark creates a namespace and table, inserts and selects — then MinIO is inspected directly to confirm real <code>.parquet</code> and Iceberg metadata landed. That guards the case where the catalog records a table but <code>S3FileIO</code> wrote somewhere else.</li>
+    </ul>
+
+    <h3>Persistence — 4 tests</h3>
+    <p>Run only after <code>docker compose down</code>, never <code>restart</code>. <code>restart</code> does not remove containers, so it cannot distinguish state held in a named volume from state held in a container's writable layer.</p>
+
+    <pre><code>demo/smoke/data/00000-0-27c9e7f5-...-00001.parquet          799B
+demo/smoke/metadata/00000-438c4901-....metadata.json       730B
+demo/smoke/metadata/00001-afefbbb0-....metadata.json      1.7KiB
+demo/smoke/metadata/9e778123-...-m0.avro                  6.9KiB
+demo/smoke/metadata/snap-8479762697888376370-1-....avro   4.3KiB</code></pre>
+  </section>
+
+  <section>
+    <h2>Known gaps</h2>
+
+    <h3>CI is unverified</h3>
+    <p>The workflow is written but has never run — there is no GitHub remote yet. It is unproven until the repo is pushed.</p>
+
+    <h3>Healthchecks are liveness, not correctness</h3>
+    <p>Deliberately. The <code>iceberg-rest</code> check is a <code>/dev/tcp</code> port probe and the <code>spark</code> check only confirms the Iceberg jars exist in the image. They sequence startup; the integration suite is what proves the services work. This split is documented in the compose file, but it does mean <code>docker compose ps</code> alone should never be read as evidence.</p>
+
+    <h3>Memory headroom is thin</h3>
+    <p>Docker Desktop reports 8.3 GB on this machine, with <code>spark.driver.memory</code> at 2g. Phase 7 adds Airflow to the same host — that is where the budget gets tight and a bump or compose profiles may become necessary.</p>
+
+    <h3>First run is slow</h3>
+    <p>A clean machine pulls roughly 2.5 GB and builds two images. The Spark base alone is 1.56 GB and took several minutes here.</p>
+  </section>
+
+  <section>
+    <h2>Reproducing</h2>
+    <pre><code>make install
+make verify     # ~3 minutes once images are cached</code></pre>
+    <p>The exit code is the verdict. <code>make verify-fast</code> runs the probes only, against an already-running stack.</p>
+
+    <h3>Next</h3>
+    <p>Phase 2 — ingestion. Snapshot GraphQL against <code>hub.snapshot.org/graphql</code> and Discourse REST clients writing raw responses to bronze in MinIO, with content-hash keys so re-runs are no-ops. The one decision worth settling first is the embedding model, since its dimension is already baked into <code>document_embeddings.embedding</code> as <code>VECTOR(1536)</code>.</p>
+  </section>
+
+  <footer>
+    <p>Two commits: <code>e47ce87</code> Phase 0 skeleton and harness, <code>378b445</code> Phase 1 stack. Harness last run 13 Aug 2026.</p>
+  </footer>
+
+</div>
