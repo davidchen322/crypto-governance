@@ -7,7 +7,8 @@ citations.
 The full build plan lives in [`docs/implementation-plan.md`](docs/implementation-plan.md).
 **Phases 0, 1 and 2 are complete**; results are in
 [`docs/phase-0-1-results.md`](docs/phase-0-1-results.md) and
-[`docs/phase-2-results.md`](docs/phase-2-results.md).
+[`docs/phase-2-results.md`](docs/phase-2-results.md). Styled build reports are
+published as private artifacts; links are in the commit messages.
 
 ## Quick start
 
