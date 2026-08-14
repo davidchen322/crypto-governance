@@ -4,6 +4,11 @@
 #
 # Healthchecks here exist to sequence startup, not to prove correctness. Real verification
 # lives in tests/integration/, which exercises each service's actual code path.
+#
+# No service pins `container_name`, and every host port is env-overridable. That is what
+# lets scripts/verify.sh run the same file under a second Compose project with its own
+# volumes: the acceptance harness destroys volumes by design, and it must never be able to
+# take harvested data with it.
 
 name: crypto-gov
 
@@ -14,7 +19,6 @@ services:
   # and (from Phase 7) Airflow metadata.
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: gov_postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-engineer}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
@@ -55,7 +59,6 @@ services:
   # --- Local S3 -----------------------------------------------------------
   minio:
     image: minio/minio:latest
-    container_name: gov_minio
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -78,7 +81,6 @@ services:
   # stack reproducible from zero rather than dependent on a bucket someone made by hand.
   minio-init:
     image: minio/mc:latest
-    container_name: gov_minio_init
     depends_on:
       minio:
         condition: service_healthy
@@ -103,7 +105,6 @@ services:
     build:
       context: ./docker/iceberg-rest
     image: crypto-gov/iceberg-rest:1.9.2
-    container_name: gov_iceberg_rest
     depends_on:
       postgres:
         condition: service_healthy
@@ -138,7 +139,6 @@ services:
     build:
       context: ./docker/spark
     image: crypto-gov/spark-iceberg:3.5.3
-    container_name: gov_spark
     depends_on:
       iceberg-rest:
         condition: service_healthy

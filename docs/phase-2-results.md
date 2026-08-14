@@ -218,6 +218,13 @@ Phase 4 chunking and embedding cost, where the forum corpus will be the bulk of 
 are conservative guesses. No 429 was ever observed, so the retry path has never fired against
 a real server — only against the fake transport.
 
+**The acceptance harness used to destroy harvested data.** `scripts/verify.sh` opens with
+`docker compose down -v`, which wiped all 376 objects when it was run to confirm the suite
+still passed before committing. Fixed after Phase 2: the harness now runs under its own
+Compose project with separate volumes and ports, verified by harvesting into the dev stack,
+running the full harness, and confirming the object count was unchanged. Three tests pin the
+invariant. The dev stack is still destroyed by `make nuke`, which is what that name is for.
+
 **Full topic bodies require `--with-posts`.** Without it only listing metadata is stored,
 which has no post text in it. Easy to forget; Phase 3 should fail loudly on a topic object
 with no `post_stream`.

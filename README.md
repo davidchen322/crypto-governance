@@ -77,6 +77,12 @@ usable. Instead it:
 Step 5 is the one that matters. `docker compose restart` would pass trivially; `down`
 removes the containers, so only state genuinely held in named volumes survives.
 
+**The harness runs under its own Compose project** (`crypto-gov-verify`) with separate
+volumes and host ports. It destroys volumes by design, so it must never be able to take
+harvested data with it — re-fetching a large backfill from rate-limited public APIs because
+someone ran the test suite is not an acceptable failure mode. Both stacks can run at once.
+`make nuke`, by contrast, destroys the dev stack's volumes: that is what the name is for.
+
 Tests that hit Snapshot and Discourse are marked `live` and excluded from `make verify` —
 a red build caused by someone else's maintenance window teaches nothing. Run them
 deliberately with `make verify-live` when changing a client or when a harvest starts

@@ -114,3 +114,51 @@ def test_pyproject_declares_integration_markers():
     markers = cfg["tool"]["pytest"]["ini_options"]["markers"]
     names = {m.split(":", 1)[0] for m in markers}
     assert {"integration", "seed", "persistence"} <= names
+
+
+# --------------------------------------------------------------------------
+# Harness isolation — verify.sh destroys volumes, so it must never target the dev stack
+# --------------------------------------------------------------------------
+
+
+def _verify_script() -> str:
+    return (REPO / "scripts/verify.sh").read_text()
+
+
+def test_verify_runs_under_its_own_compose_project():
+    """`verify.sh` opens with `docker compose down -v`. Without an isolated project name
+    that wipes harvested bronze data — hours of re-fetching from rate-limited public APIs
+    because someone ran the test suite."""
+    script = _verify_script()
+    assert "COMPOSE_PROJECT_NAME=" in script, "verify.sh does not set a Compose project"
+    project = re.search(r"COMPOSE_PROJECT_NAME=(\S+)", script).group(1)
+    default = re.search(r"^name:\s*(\S+)", (REPO / "docker-compose.yml").read_text(), re.M).group(1)
+    assert project != default, (
+        f"verify.sh shares the project name {default!r} with the dev stack; "
+        "its `down -v` would destroy real data"
+    )
+
+
+def test_verify_uses_ports_that_do_not_collide_with_the_dev_stack():
+    """Both stacks must be able to run at once, or the harness cannot be used while
+    developing."""
+    script = _verify_script()
+    defaults = dict(
+        line.split("=", 1)
+        for line in (REPO / ".env.example").read_text().splitlines()
+        if "=" in line and not line.strip().startswith("#")
+    )
+    for var in ("POSTGRES_PORT", "MINIO_PORT", "ICEBERG_REST_PORT"):
+        match = re.search(rf"^export {var}=(\d+)", script, re.M)
+        assert match, f"verify.sh does not override {var}"
+        assert match.group(1) != defaults[var].strip(), (
+            f"verify.sh reuses the dev {var} ({defaults[var].strip()}); "
+            "the two stacks cannot run simultaneously"
+        )
+
+
+def test_compose_pins_no_container_names():
+    """A pinned container_name is global, so two projects using this file would collide."""
+    compose = (REPO / "docker-compose.yml").read_text()
+    pinned = re.findall(r"^\s*container_name:\s*(\S+)", compose, re.M)
+    assert not pinned, f"container_name blocks running a second project: {pinned}"
