@@ -21,6 +21,18 @@ services:
       POSTGRES_DB: ${POSTGRES_VECTOR_DB:-gov_vectors}
       POSTGRES_CATALOG_DB: ${POSTGRES_CATALOG_DB:-iceberg_catalog}
       POSTGRES_AIRFLOW_DB: ${POSTGRES_AIRFLOW_DB:-airflow}
+    # HNSW builds that do not fit in maintenance_work_mem fall back to a much slower
+    # on-disk build — minutes vs hours once Phase 4 embeds a real corpus. The 64MB
+    # default already warns at 20k rows. shared_buffers matters separately: HNSW query
+    # speed depends on the index being in cache rather than read from disk.
+    command:
+      - postgres
+      - -c
+      - maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-512MB}
+      - -c
+      - shared_buffers=${POSTGRES_SHARED_BUFFERS:-512MB}
+      - -c
+      - max_parallel_maintenance_workers=${POSTGRES_PARALLEL_MAINTENANCE_WORKERS:-3}
     ports:
       # Non-default host port: 5432 usually collides with a local Postgres install.
       - "${POSTGRES_PORT:-55432}:5432"

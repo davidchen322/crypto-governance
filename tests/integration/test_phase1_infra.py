@@ -67,6 +67,38 @@ def test_hnsw_index_can_be_built(pg_dsn):
         conn.execute("DROP TABLE _probe_vectors")
 
 
+def test_index_build_memory_is_raised_above_default(pg_dsn):
+    """Phase 4 guard. At the 64MB default, pgvector falls back to a slow on-disk HNSW
+    build — the difference between minutes and hours on a real backfill. Postgres warns
+    about it at only 20k rows, so this must not silently revert."""
+    import psycopg
+
+    with psycopg.connect(pg_dsn, connect_timeout=10) as conn:
+        setting, unit = conn.execute(
+            "SELECT setting, unit FROM pg_settings WHERE name = 'maintenance_work_mem'"
+        ).fetchone()
+    kb = int(setting) * (1024 if unit == "MB" else 1)
+    assert kb >= 256 * 1024, f"maintenance_work_mem is {setting}{unit}; expected >= 256MB"
+
+
+def test_vector_dimension_ceiling_is_understood(pg_dsn):
+    """Pins the constraint the schema is designed around: HNSW refuses >2000 dimensions,
+    so a 3072-dim model needs halfvec rather than a wider `vector` column. If a future
+    pgvector lifts this, the escape-hatch comment in storage/vector_schema.sql is stale."""
+    import psycopg
+
+    with psycopg.connect(pg_dsn, connect_timeout=10, autocommit=True) as conn:
+        conn.execute("DROP TABLE IF EXISTS _probe_dims")
+        conn.execute("CREATE TABLE _probe_dims (e vector(3072), h halfvec(3072))")
+
+        with pytest.raises(psycopg.errors.ProgramLimitExceeded):
+            conn.execute("CREATE INDEX ON _probe_dims USING hnsw (e vector_cosine_ops)")
+
+        # halfvec is the documented workaround and must keep working.
+        conn.execute("CREATE INDEX ON _probe_dims USING hnsw (h halfvec_cosine_ops)")
+        conn.execute("DROP TABLE _probe_dims")
+
+
 def test_all_three_databases_exist(pg_dsn):
     import psycopg
 

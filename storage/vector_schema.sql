@@ -5,8 +5,36 @@
 --                        A/B tested instead of being a truncate-and-pray migration
 --   source_content_hash  joins a chunk back to the exact document version it came from
 --
--- Note: vector dimension is fixed per column. VECTOR(1536) fits text-embedding-3-small;
--- a 3072-dimension model needs a separate column or table, not just new rows.
+-- DIMENSION CEILING — read before changing embedding models.
+--
+-- The `vector` type stores up to 16000 dimensions but HNSW and IVFFlat both refuse to
+-- index more than 2000:
+--
+--     ERROR: column cannot have more than 2000 dimensions for hnsw index
+--
+-- So VECTOR(3072) is not "a bigger column" — it is an unindexable one, and every
+-- similarity query degrades to a sequential scan over the whole corpus. Verified against
+-- pgvector 0.8.6.
+--
+-- Escape hatch if a 3072-dimension model ever wins on the Phase 4 eval set: switch to
+-- `halfvec` (float16), whose index ceiling is 4000.
+--
+--     ALTER TABLE document_embeddings ADD COLUMN embedding_3072 halfvec(3072);
+--     CREATE INDEX ON document_embeddings USING hnsw (embedding_3072 halfvec_cosine_ops);
+--
+-- halfvec(3072) occupies exactly the same bytes as vector(1536) — 3072 x 2 == 1536 x 4 —
+-- so that migration costs no additional storage. Measured at 20k rows: 159 MB heap+TOAST
+-- and an 81 MB index, against 159 MB / 91 MB for vector(1536).
+--
+-- To keep float32 precision and still index, index a cast expression instead, and repeat
+-- the cast in every query or the index will not be used:
+--
+--     CREATE INDEX ON document_embeddings
+--         USING hnsw ((embedding::halfvec(3072)) halfvec_cosine_ops);
+--
+-- Usually unnecessary: text-embedding-3 models are Matryoshka-trained, so requesting
+-- `dimensions=1536` from the larger model beats the smaller model at the same width and
+-- keeps everything below the ceiling. Prefer that over widening the column.
 
 CREATE EXTENSION IF NOT EXISTS vector;
 

@@ -169,12 +169,23 @@ CREATE INDEX IF NOT EXISTS document_embeddings_lookup_idx
 
 **Two constraints to design around now:**
 
-- **Dimension is fixed per column.** `VECTOR(1536)` fits `text-embedding-3-small`.
-  `text-embedding-3-large` is 3072 and will not go in that column — a move to it means a second
-  table or column, not just new rows. Decide the starting model before Phase 4.
+- **HNSW refuses more than 2000 dimensions.** Verified against pgvector 0.8.6:
+  `ERROR: column cannot have more than 2000 dimensions for hnsw index` (SQLSTATE 54000).
+  `VECTOR(3072)` is therefore not "a wider column" — it is an unindexable one, and every
+  similarity query degrades to a sequential scan. The workaround is `halfvec` (float16),
+  whose ceiling is 4000, and which occupies exactly the same bytes as `vector(1536)`
+  (3072 × 2 == 1536 × 4). Measured at 20k rows: 159 MB heap+TOAST / 81 MB index for
+  `halfvec(3072)` against 159 MB / 91 MB for `vector(1536)`.
+- **Prefer narrowing the model to widening the column.** `text-embedding-3` models are
+  Matryoshka-trained, so requesting `dimensions=1536` from the larger model beats the
+  smaller model at the same width while staying under the ceiling. Embedding APIs bill per
+  token, not per dimension, so a narrower vector costs the same to produce.
 - **Never search across models.** Vectors from different models share no coordinate space, so
   every query must carry `WHERE embedding_model = $1`. Consider per-model partial indexes once
   a second model exists.
+- **Raise `maintenance_work_mem` before the first backfill.** An HNSW build that exceeds it
+  falls back to a much slower on-disk build. The 64 MB default already warns at 20k rows;
+  the stack now runs at 512 MB.
 
 **Point-in-time retrieval.** Because `valid_from`/`valid_to` ride on the embeddings too, the
 agent can be asked historical questions without retrieving today's text and citing it as
@@ -434,10 +445,13 @@ that can loop.
 
 Four things worth settling before Phase 2. None block starting Phase 0 or 1.
 
-**Embedding model.** Determines the vector dimension, which is baked into the column type.
-`text-embedding-3-small` at 1536 is the reasonable default and matches the blueprint. Note that
-if you want the analyst node on Claude, you still need OpenAI or Voyage for the vectors —
-Anthropic doesn't offer an embeddings API.
+**Embedding model — settled 14 Aug 2026.** `text-embedding-3-large` with `dimensions=1536`.
+This takes the stronger model while staying under pgvector's 2000-dimension index ceiling, so
+`VECTOR(1536)` stands as built and Phase 4 needs no migration. If the eval set later favours
+full 3072, the path is a `halfvec(3072)` column at identical storage cost, with
+`embedding_model` letting both coexist during the comparison. Note that if you want the
+analyst node on Claude, you still need OpenAI or Voyage for the vectors — Anthropic doesn't
+offer an embeddings API.
 
 **Initial protocol coverage.** Suggest three to five Ethereum-ecosystem protocols with both
 active Snapshot spaces and busy Discourse forums — Aave, Uniswap, Arbitrum, Optimism, Compound.
