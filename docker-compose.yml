@@ -151,6 +151,8 @@ services:
     volumes:
       - ./data_pipeline:/opt/app/data_pipeline:ro
       - ./storage:/opt/app/storage:ro
+      - ./config:/opt/app/config:ro
+      - ./tests:/opt/app/tests:ro
     command: ["sleep", "infinity"]
     healthcheck:
       # Asserts the Iceberg jars actually made it into the image — a silently broken

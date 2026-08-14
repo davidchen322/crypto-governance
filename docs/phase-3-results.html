@@ -1,0 +1,297 @@
+<title>Phase 3 Lakehouse Report</title>
+<style>
+  :root {
+    --ground:#F1F4F3; --surface:#FFFFFF; --sunken:#E7ECEA; --ink:#16211F;
+    --muted:#5B6B68; --faint:#8496921a; --rule:#D5DDDA;
+    --accent:#1B5E59; --accent-soft:#1b5e5914;
+    --signal:#9A4A1C; --signal-soft:#9a4a1c12;
+    --good:#2F6B3C; --good-soft:#2f6b3c14;
+    --f-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --f-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --f-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --measure:68ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1413; --surface:#151F1D; --sunken:#101817; --ink:#E3EAE7;
+      --muted:#93A5A0; --faint:#93a5a014; --rule:#26332F;
+      --accent:#5FBFB2; --accent-soft:#5fbfb214;
+      --signal:#D9895C; --signal-soft:#d9895c14;
+      --good:#74BE84; --good-soft:#74be8414;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1413; --surface:#151F1D; --sunken:#101817; --ink:#E3EAE7;
+    --muted:#93A5A0; --faint:#93a5a014; --rule:#26332F;
+    --accent:#5FBFB2; --accent-soft:#5fbfb214;
+    --signal:#D9895C; --signal-soft:#d9895c14;
+    --good:#74BE84; --good-soft:#74be8414;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground); color: var(--ink); font-family: var(--f-body);
+    font-size: 16px; line-height: 1.65; margin: 0; -webkit-font-smoothing: antialiased;
+  }
+  .shell { max-width: 880px; margin: 0 auto; padding: 0 24px 110px; }
+
+  .masthead { padding: 68px 0 36px; border-bottom: 1px solid var(--rule); margin-bottom: 44px; }
+  .eyebrow {
+    font-family: var(--f-mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 18px;
+  }
+  h1 {
+    font-family: var(--f-display); font-size: clamp(32px,5vw,48px); line-height: 1.1;
+    letter-spacing: -.015em; font-weight: 600; margin: 0 0 16px; text-wrap: balance;
+  }
+  .standfirst { font-size: 18px; color: var(--muted); max-width: 60ch; margin: 0; }
+  .verdict {
+    display: inline-flex; align-items: center; gap: 10px; margin-top: 28px;
+    padding: 9px 16px 9px 13px; border: 1px solid var(--good);
+    background: var(--good-soft); border-radius: 4px; font-family: var(--f-mono);
+    font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--good);
+  }
+  .verdict .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
+
+  section { margin-bottom: 60px; }
+  h2 {
+    font-family: var(--f-display); font-size: 26px; font-weight: 600;
+    letter-spacing: -.01em; margin: 0 0 6px; text-wrap: balance;
+  }
+  h3 { font-size: 15px; font-weight: 650; margin: 30px 0 8px; }
+  .section-note { color: var(--muted); font-size: 15px; margin: 0 0 24px; max-width: var(--measure); }
+  p { max-width: var(--measure); margin: 0 0 15px; }
+  ul { max-width: var(--measure); padding-left: 20px; margin: 0 0 15px; }
+  li { margin-bottom: 6px; }
+  a { color: var(--accent); }
+
+  code {
+    font-family: var(--f-mono); font-size: .875em; background: var(--faint);
+    padding: 1px 5px; border-radius: 3px;
+  }
+  pre {
+    background: var(--sunken); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 16px 18px; overflow-x: auto; margin: 0 0 20px;
+  }
+  pre code { background: none; padding: 0; font-size: 12.5px; line-height: 1.65; }
+
+  .scroller { overflow-x: auto; margin-bottom: 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th {
+    text-align: left; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .11em;
+    text-transform: uppercase; color: var(--muted); font-weight: 600;
+    padding: 0 14px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: bottom;
+  }
+  td { padding: 11px 14px 11px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  td:last-child, th:last-child { padding-right: 0; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tfoot td { border-bottom: none; border-top: 2px solid var(--rule); font-weight: 650; }
+
+  .pass { color: var(--good); font-weight: 650; font-family: var(--f-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .skip { color: var(--signal); font-family: var(--f-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+
+  .callout {
+    border: 1px solid var(--rule); border-left: 3px solid var(--signal);
+    background: var(--signal-soft); padding: 16px 18px; border-radius: 0 5px 5px 0;
+    margin: 0 0 20px; max-width: var(--measure);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .callout-label {
+    font-family: var(--f-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--signal); display: block; margin-bottom: 6px; font-weight: 600;
+  }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 6px;
+    padding: 20px 22px; margin-bottom: 14px;
+  }
+  .card h3 { margin-top: 0; font-family: var(--f-display); font-size: 18px; font-weight: 600; }
+  .card p, .card ul { max-width: 62ch; }
+  .card > *:last-child { margin-bottom: 0; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  footer {
+    border-top: 1px solid var(--rule); padding-top: 20px; font-size: 13px;
+    color: var(--muted); max-width: var(--measure);
+  }
+</style>
+
+<div class="shell">
+
+  <header class="masthead">
+    <p class="eyebrow">Crypto Governance Intelligence Platform · Build Report</p>
+    <h1>Phase 3 — Lakehouse</h1>
+    <p class="standfirst">A Spark job folding content-addressed bronze into SCD2 Iceberg tables, so "what did this document say on date X" is an ordinary SQL predicate rather than a table-snapshot lookup that compaction can destroy.</p>
+    <div class="verdict"><span class="dot"></span>11 passed · 2 skipped · 125 + 328 versions</div>
+  </header>
+
+  <section>
+    <h2>Verdict</h2>
+    <p class="section-note">Exit criteria were <em>"idempotent across consecutive runs, and a point-in-time query returns the correct historical version."</em></p>
+
+    <div class="scroller">
+      <table>
+        <thead><tr><th style="width:64%">Check</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Both silver tables populate from bronze</td><td class="pass">pass</td></tr>
+          <tr><td>Exactly one current row per entity</td><td class="pass">pass</td></tr>
+          <tr><td><code>is_current</code> agrees with a NULL <code>valid_to</code></td><td class="pass">pass</td></tr>
+          <tr><td>Validity windows chain with no gap or overlap</td><td class="pass">pass</td></tr>
+          <tr><td>No duplicate <code>(entity, record_hash)</code> pairs</td><td class="pass">pass</td></tr>
+          <tr><td>Point-in-time resolves to exactly one row per entity</td><td class="pass">pass</td></tr>
+          <tr><td>Nothing is visible before it was observed</td><td class="pass">pass</td></tr>
+          <tr><td>Rebuild over unchanged bronze changes nothing</td><td class="pass">pass</td></tr>
+          <tr><td>SCD2 window mechanism — 21 assertions</td><td class="pass">pass</td></tr>
+          <tr><td>Superseded version recoverable on <em>harvested</em> data</td><td class="skip">skipped</td></tr>
+          <tr><td><code>content_hash</code> stable when only votes move, on harvested data</td><td class="skip">skipped</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The two skips are honest, not incidental — see <a href="#gap">The gap in the demo</a>.</p>
+  </section>
+
+  <section>
+    <h2>Silver contents</h2>
+    <div class="scroller">
+      <table>
+        <thead><tr><th style="width:34%">Protocol</th><th>Proposal versions</th><th>Forum post versions</th><th>Topics</th></tr></thead>
+        <tbody>
+          <tr><td>aave</td><td class="num">25</td><td class="num">28</td><td class="num">8</td></tr>
+          <tr><td>arbitrum</td><td class="num">25</td><td class="num">65</td><td class="num">8</td></tr>
+          <tr><td>ens</td><td class="num">25</td><td class="num">59</td><td class="num">8</td></tr>
+          <tr><td>optimism</td><td class="num">25</td><td class="num">81</td><td class="num">8</td></tr>
+          <tr><td>uniswap</td><td class="num">25</td><td class="num">95</td><td class="num">8</td></tr>
+        </tbody>
+        <tfoot><tr><td>Total</td><td class="num">125</td><td class="num">328</td><td class="num">40</td></tr></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Design decisions</h2>
+
+    <div class="card">
+      <h3>Silver is a pure function of bronze</h3>
+      <p>Because bronze is content-addressed and append-only, the build is a <b>fold over immutable objects ordered by first observation</b> — not a diff against a live API. Two things follow:</p>
+      <ul>
+        <li>The build is deterministic, which is what makes the idempotency claim provable rather than hopeful.</li>
+        <li>Ordering comes from object modification time via Spark's <code>_metadata</code> column. Bronze never overwrites, so an object's mtime <em>is</em> the moment that content was first observed — no bookkeeping table, no watermark to drift.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Two hashes, deliberately</h3>
+      <div class="scroller">
+        <table>
+          <thead><tr><th style="width:24%">Hash</th><th style="width:42%">Covers</th><th>Drives</th></tr></thead>
+          <tbody>
+            <tr><td><code>content_hash</code></td><td>title + body only (or a post's body)</td><td>Re-embedding in Phase 4</td></tr>
+            <tr><td><code>record_hash</code></td><td>content + state + tally + discussion link</td><td>SCD2 versioning</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Without the split, every vote arriving on an active proposal would invalidate that proposal's embeddings even though not a word of its text changed. With it, vote movement produces a new <em>row</em> while text identity stays stable, and Phase 4 joins on <code>content_hash</code> to embed only what actually changed.</p>
+    </div>
+
+    <div class="card">
+      <h3>Post-level grain for the forum</h3>
+      <p><code>forum_posts</code> is keyed on <code>(forum_host, topic_id, post_id)</code>, not per topic. A forty-reply thread where one post is edited produces <b>one</b> new version rather than a fresh copy of the whole thread. It is also the grain Phase 4 wants to chunk.</p>
+      <p><code>body_html</code> keeps Discourse's <code>cooked</code> output verbatim; <code>body_text</code> carries a tag-stripped copy for embedding — alongside the original, never instead of it.</p>
+    </div>
+
+    <div class="card">
+      <h3>SCD2 rather than Iceberg snapshots</h3>
+      <p>The whole point of the phase, restated: Iceberg time travel answers <em>"what did this table look like at snapshot X"</em>, not <em>"what did proposal ABC say on March 3rd."</em> Relying on table snapshots for document history is fragile — <code>expire_snapshots</code> exists because metadata accumulates, and its default retention is five days, so routine housekeeping becomes a data-loss event.</p>
+      <p>Validity windows live in the rows. Iceberg then does what it is genuinely good at — ACID commits, pipeline rollback, schema evolution — without being load-bearing for the archive.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>The finding that changed the implementation</h2>
+    <p class="section-note">The job's first docstring claimed MERGE would make an unchanged re-run write nothing. The Iceberg snapshot log falsified it.</p>
+
+    <pre><code>operation   added-records
+append      125          &lt;- first build
+overwrite   125          &lt;- re-run over unchanged bronze
+overwrite   125          &lt;- and again
+overwrite   125          &lt;- and again</code></pre>
+
+    <p><b>Iceberg's copy-on-write MERGE rewrites every data file containing a matched row, whether or not the row actually changes.</b> The data stayed byte-identical — so the row-level idempotency test passed either way — but the table accumulated a full-rewrite snapshot per run. That is precisely the noise that makes "nothing changed" indistinguishable from "everything changed" when reading the history later.</p>
+
+    <p><b>Fix:</b> guard the MERGE rather than trusting it to no-op. <code>merge()</code> now counts new rows (anti-join on <code>(keys, record_hash)</code>) and closed-out rows (matched rows whose validity window moved) <em>before</em> issuing the statement, and skips it when both are zero.</p>
+
+    <pre><code>gov.silver.proposal_versions: no changes, MERGE skipped
+gov.silver.forum_posts: no changes, MERGE skipped</code></pre>
+
+    <div class="callout">
+      <span class="callout-label">Why this one is worth dwelling on</span>
+      <p>The original test would never have caught it. Asserting on row counts and content fingerprints proves the <em>data</em> is idempotent; it says nothing about whether the table is quietly rewriting itself. The snapshot log was the only place the problem was visible — and after the guarded run it stayed unchanged at four entries.</p>
+    </div>
+  </section>
+
+  <section id="gap">
+    <h2>The gap in the demo</h2>
+    <p class="section-note">The plan's Phase 3 demo was "a SQL query showing a forum post that was edited — both versions side by side."</p>
+
+    <p><b>No such row exists yet.</b> Every one of the 125 proposals and 328 posts is single-version: <code>count(DISTINCT record_hash)</code> equals the row count exactly. A re-harvest over the same window wrote zero new bronze objects — no vote landed and no post was edited while the harvester was watching.</p>
+
+    <p>That is a data-availability fact, not a defect, but it has a real consequence: <b>the invariant tests above would all pass on a table where the SCD2 logic never fired.</b> Passing them proves very little on its own.</p>
+
+    <p>So the mechanism is verified separately and deterministically. A handcrafted fixture covers three cases — <b>A</b>, three versions observed in order; <b>B</b>, a single version that must come out open-ended rather than closed; <b>C</b>, the same content seen twice, which must collapse to one row rather than emit a zero-width window.</p>
+
+    <pre><code>  ok  A/v1 closes when v2 arrives
+  ok  A/v2 closes when v3 arrives
+  ok  A/v3 is open-ended
+  ok  C deduplicates to one version
+  ok  as-of 2026-08-02 returns hash-a2
+  ok  nothing is visible before it was observed
+PASS — 6 fixture rows, all SCD2 assertions hold</code></pre>
+
+    <p>All 21 assertions hold, including the point-in-time predicate resolving correctly at each timestamp and returning nothing for a date before the first observation. The two skipped integration tests will start running on their own once a tally moves or a post is edited between harvests — they skip rather than pass so the absence stays visible.</p>
+  </section>
+
+  <section>
+    <h2>Deviations from the plan</h2>
+
+    <div class="card">
+      <h3>Spark reads bronze over <code>s3a://</code>, which needed jars the image lacked</h3>
+      <p>Iceberg's <code>S3FileIO</code> only serves Iceberg tables; Spark's own file reader needs the <code>s3a</code> filesystem, a separate stack. Added <code>hadoop-aws</code> 3.3.4 — pinned to the Hadoop version Spark 3.5.3 bundles, since a mismatch fails at class-load rather than at build — plus the AWS SDK v1 bundle it expects. It coexists with Iceberg's SDK v2 because they occupy different packages.</p>
+      <p>The alternative was reading bronze through the driver with boto3, which at 17 MB would have worked fine and skipped a 267 MB jar. Rejected because it does not scale, and a medallion architecture that cannot read its own object store is a diagram rather than a lakehouse.</p>
+    </div>
+
+    <div class="card">
+      <h3>Silver filters to configured protocols</h3>
+      <p>The first build ingested the integration suite's <code>probe-*</code> fixtures — 22 entities from 20 real objects. Bronze is a landing zone and legitimately holds more than silver should.</p>
+      <p>The filter is now explicit and the drop is <b>reported</b>, not silent: <code>dropped 5 proposal rows from unconfigured spaces</code>. A space quietly missing from silver looks identical to a space with no activity, which is exactly the class of bug that goes unnoticed for months.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Known gaps</h2>
+
+    <h3>Content addressing cannot represent a revert</h3>
+    <p>If a document goes A → B → A, the third state hashes to a key that already exists, so no bronze object is written and silver shows A → B with B current. Reverts are rare in governance text, and the alternative — one bronze object per observation — trades this for unbounded storage growth. Worth knowing before trusting the timeline as a complete audit record.</p>
+
+    <h3>HTML stripping is a regex</h3>
+    <p><code>body_text</code> comes from removing <code>&lt;[^&gt;]+&gt;</code> and collapsing whitespace. Fine for Discourse's <code>cooked</code> output, but it will mangle a post containing a literal <code>&lt;</code> in a code block. Phase 4 should check a sample before trusting it.</p>
+
+    <h3>Timestamps are observation time, not source time</h3>
+    <p><code>observed_at</code> is when the harvester first saw the content, not when the author changed it. Discourse exposes real revision history via its API; wiring that in would give true edit timestamps. Not needed for Phase 4, but it is the difference between "we noticed on Tuesday" and "it was edited on Sunday."</p>
+
+    <h3>The suite is slow</h3>
+    <p>12m49s, almost entirely JVM startup — each probe pays a fresh Spark session. A single session running all assertions would cut this by an order of magnitude if it becomes a problem.</p>
+  </section>
+
+  <section>
+    <h2>Next</h2>
+    <p>Phase 4 — chunking, embeddings and the evaluation harness. Silver already carries what it needs: <code>content_hash</code> to embed only changed text, <code>valid_from</code>/<code>valid_to</code> to support point-in-time retrieval, and <code>body_text</code> at post grain.</p>
+    <p>The one credential required arrives here. Run <code>make check-openai</code> before the first backfill.</p>
+  </section>
+
+  <footer>
+    <p>Built 14 Aug 2026. <code>make silver</code> rebuilds; the guarded MERGE makes a no-change run a genuine no-op.</p>
+  </footer>
+
+</div>

@@ -38,5 +38,6 @@ markers = [
     "integration: requires the docker compose stack to be running",
     "seed: writes state that the persistence checks later assert survived a restart",
     "persistence: asserts state survived `docker compose down` (volumes retained)",
+    "slow: multi-minute Spark runs; excluded from verify-fast",
     "live: hits third-party APIs; excluded from make verify so someone else's outage cannot fail the build",
 ]

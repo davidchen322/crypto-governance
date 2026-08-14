@@ -5,9 +5,10 @@ debate, and (later) on-chain contract source — and answers questions about it 
 citations.
 
 The full build plan lives in [`docs/implementation-plan.md`](docs/implementation-plan.md).
-**Phases 0, 1 and 2 are complete**; results are in
-[`docs/phase-0-1-results.md`](docs/phase-0-1-results.md) and
-[`docs/phase-2-results.md`](docs/phase-2-results.md). Styled build reports are
+**Phases 0 through 3 are complete**; results are in
+[`docs/phase-0-1-results.md`](docs/phase-0-1-results.md),
+[`docs/phase-2-results.md`](docs/phase-2-results.md) and
+[`docs/phase-3-results.md`](docs/phase-3-results.md). Styled build reports are
 published as private artifacts; links are in the commit messages.
 
 External sources and which need an API key: [`docs/api-keys.md`](docs/api-keys.md).
@@ -21,6 +22,7 @@ make install     # venv + dependencies
 make up          # start the stack, block until healthy
 make verify      # full acceptance harness
 make harvest ARGS="--all --proposals 20 --topics 15 --with-posts"
+make silver       # fold bronze into the SCD2 Iceberg tables
 ```
 
 `make help` lists every target.
