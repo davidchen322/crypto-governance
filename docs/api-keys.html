@@ -1,0 +1,307 @@
+<title>Credentials and Sources</title>
+<style>
+  :root {
+    --ground:#F1F4F3; --surface:#FFFFFF; --sunken:#E7ECEA; --ink:#16211F;
+    --muted:#5B6B68; --faint:#8496921a; --rule:#D5DDDA;
+    --accent:#1B5E59; --accent-soft:#1b5e5914;
+    --signal:#9A4A1C; --signal-soft:#9a4a1c12;
+    --good:#2F6B3C; --good-soft:#2f6b3c14;
+    --f-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --f-body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --f-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --measure:68ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1413; --surface:#151F1D; --sunken:#101817; --ink:#E3EAE7;
+      --muted:#93A5A0; --faint:#93a5a014; --rule:#26332F;
+      --accent:#5FBFB2; --accent-soft:#5fbfb214;
+      --signal:#D9895C; --signal-soft:#d9895c14;
+      --good:#74BE84; --good-soft:#74be8414;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1413; --surface:#151F1D; --sunken:#101817; --ink:#E3EAE7;
+    --muted:#93A5A0; --faint:#93a5a014; --rule:#26332F;
+    --accent:#5FBFB2; --accent-soft:#5fbfb214;
+    --signal:#D9895C; --signal-soft:#d9895c14;
+    --good:#74BE84; --good-soft:#74be8414;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground); color: var(--ink); font-family: var(--f-body);
+    font-size: 16px; line-height: 1.65; margin: 0; -webkit-font-smoothing: antialiased;
+  }
+  .shell { max-width: 880px; margin: 0 auto; padding: 0 24px 110px; }
+
+  .masthead { padding: 68px 0 36px; border-bottom: 1px solid var(--rule); margin-bottom: 44px; }
+  .eyebrow {
+    font-family: var(--f-mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 18px;
+  }
+  h1 {
+    font-family: var(--f-display); font-size: clamp(32px,5vw,48px); line-height: 1.1;
+    letter-spacing: -.015em; font-weight: 600; margin: 0 0 16px; text-wrap: balance;
+  }
+  .standfirst { font-size: 18px; color: var(--muted); max-width: 60ch; margin: 0; }
+  .verdict {
+    display: inline-flex; align-items: center; gap: 10px; margin-top: 28px;
+    padding: 9px 16px 9px 13px; border: 1px solid var(--signal);
+    background: var(--signal-soft); border-radius: 4px; font-family: var(--f-mono);
+    font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--signal);
+  }
+  .verdict .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); flex: none; }
+
+  section { margin-bottom: 60px; }
+  h2 {
+    font-family: var(--f-display); font-size: 26px; font-weight: 600;
+    letter-spacing: -.01em; margin: 0 0 6px; text-wrap: balance;
+  }
+  h3 { font-size: 15px; font-weight: 650; margin: 30px 0 8px; }
+  .section-note { color: var(--muted); font-size: 15px; margin: 0 0 24px; max-width: var(--measure); }
+  p { max-width: var(--measure); margin: 0 0 15px; }
+  ul { max-width: var(--measure); padding-left: 20px; margin: 0 0 15px; }
+  li { margin-bottom: 6px; }
+  a { color: var(--accent); }
+
+  code {
+    font-family: var(--f-mono); font-size: .875em; background: var(--faint);
+    padding: 1px 5px; border-radius: 3px;
+  }
+  pre {
+    background: var(--sunken); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 16px 18px; overflow-x: auto; margin: 0 0 20px;
+  }
+  pre code { background: none; padding: 0; font-size: 12.5px; line-height: 1.65; }
+
+  .scroller { overflow-x: auto; margin-bottom: 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th {
+    text-align: left; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .11em;
+    text-transform: uppercase; color: var(--muted); font-weight: 600;
+    padding: 0 14px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: bottom;
+  }
+  td { padding: 11px 14px 11px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  td:last-child, th:last-child { padding-right: 0; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .yes { color: var(--signal); font-weight: 650; }
+  .no  { color: var(--good); }
+
+  /* Source cards — status is the organizing fact, so it leads */
+  .src {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 6px;
+    padding: 20px 22px; margin-bottom: 14px;
+  }
+  .src.required { border-left: 3px solid var(--signal); }
+  .src-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .src-name {
+    font-family: var(--f-display); font-size: 19px; font-weight: 600; margin: 0;
+    flex: 1 1 auto; min-width: 0;
+  }
+  .tag {
+    font-family: var(--f-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 3px; border: 1px solid var(--rule);
+    color: var(--muted); white-space: nowrap;
+  }
+  .tag.need { color: var(--signal); border-color: var(--signal); background: var(--signal-soft); }
+  .tag.free { color: var(--good); border-color: var(--good); background: var(--good-soft); }
+  .src p { max-width: 62ch; }
+  .src > *:last-child { margin-bottom: 0; }
+
+  .callout {
+    border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+    background: var(--accent-soft); padding: 16px 18px; border-radius: 0 5px 5px 0;
+    margin: 0 0 20px; max-width: var(--measure);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .callout-label {
+    font-family: var(--f-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent); display: block; margin-bottom: 6px; font-weight: 600;
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  footer {
+    border-top: 1px solid var(--rule); padding-top: 20px; font-size: 13px;
+    color: var(--muted); max-width: var(--measure);
+  }
+</style>
+
+<div class="shell">
+
+  <header class="masthead">
+    <p class="eyebrow">Crypto Governance Intelligence Platform · Reference</p>
+    <h1>Credentials and Sources</h1>
+    <p class="standfirst">Every external source the platform touches, whether it needs a key, and when. Snapshot and Discourse were tested empirically; the rest comes from provider documentation.</p>
+    <div class="verdict"><span class="dot"></span>One key on the critical path: OpenAI</div>
+  </header>
+
+  <section>
+    <h2>At a glance</h2>
+    <div class="scroller">
+      <table>
+        <thead><tr><th style="width:30%">Source</th><th style="width:26%">Key needed?</th><th style="width:20%">First required</th><th>Cost</th></tr></thead>
+        <tbody>
+          <tr><td>Snapshot GraphQL</td><td class="no">No</td><td class="num">—</td><td>Free</td></tr>
+          <tr><td>Discourse forums (×5)</td><td class="no">No — and not obtainable</td><td class="num">—</td><td>Free</td></tr>
+          <tr><td><b>OpenAI</b></td><td class="yes">Yes — get this</td><td class="num"><b>Phase 4</b></td><td>Per token</td></tr>
+          <tr><td>Anthropic</td><td>Optional</td><td class="num">Phase 5</td><td>Per token</td></tr>
+          <tr><td>Voyage AI</td><td>Optional alternative</td><td class="num">Phase 4</td><td>Per token</td></tr>
+          <tr><td>Etherscan</td><td>Free tier</td><td class="num">Phase 9</td><td>Free at this volume</td></tr>
+          <tr><td>Sourcify</td><td class="no">No</td><td class="num">Phase 9</td><td>Free</td></tr>
+          <tr><td>Discord / Slack</td><td>Webhook URL, not a key</td><td class="num">Phase 10</td><td>Free</td></tr>
+          <tr><td>Cloud provider</td><td>Account, not an API key</td><td class="num">Phase 11</td><td>Metered</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Nothing built so far, and nothing in Phase 3, needs any credential at all.</p>
+  </section>
+
+  <section>
+    <h2>The three model calls</h2>
+    <p class="section-note">Model choice is not one decision. The agent makes three distinct kinds of call, chosen independently — which is what the earlier "only if you want Claude for the analyst node" was pointing at.</p>
+
+    <div class="scroller">
+      <table>
+        <thead><tr><th style="width:22%">Call</th><th style="width:48%">Job</th><th>Needs</th></tr></thead>
+        <tbody>
+          <tr><td><b>Router</b></td><td>Classify a query — SQL, vector, or hybrid? One short structured output.</td><td>A small, cheap model</td></tr>
+          <tr><td><b>Analyst</b></td><td>Read retrieved chunks, write the risk assessment with citations.</td><td>Strong reasoning</td></tr>
+          <tr><td><b>Embeddings</b></td><td>Convert text into a 1536-dimension vector. Not a chat model.</td><td>An embedding model</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="callout-label">Why Claude can't replace the OpenAI key</span>
+      <p>Claude is an option for the <b>middle row alone</b>. <b>Anthropic publishes no embeddings endpoint</b>, so the bottom row comes from OpenAI or Voyage no matter which provider writes the analysis. An Anthropic key therefore <em>adds</em> a provider rather than replacing one — which is why it's "nice to have" and OpenAI is not.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sources that need nothing</h2>
+
+    <div class="src">
+      <div class="src-head">
+        <h3 class="src-name">Snapshot</h3>
+        <span class="tag free">No key</span><span class="tag">Verified</span>
+      </div>
+      <p><code>hub.snapshot.org/graphql</code> — 100 proposals fetched across five spaces anonymously, zero 429s at a self-imposed 60 requests/minute.</p>
+      <p>No key exists to obtain for the public endpoint. If a full backfill (Aave alone has ~970 proposals) starts drawing throttling, check whether Snapshot has introduced a keyed tier before assuming the client is at fault.</p>
+    </div>
+
+    <div class="src">
+      <div class="src-head">
+        <h3 class="src-name">Discourse — five independent instances</h3>
+        <span class="tag free">No key</span><span class="tag">Verified</span>
+      </div>
+      <p>All five verified returning HTTP 200 with full topic and post bodies anonymously.</p>
+      <p><b>Discourse API keys are per-instance and issued by each forum's own administrators</b> — by Aave's community, Uniswap's community, and so on, individually. They are not realistically obtainable by a third party and are not needed.</p>
+      <p>The correct posture is politeness, not authentication: a separate 30 requests/minute token bucket per host, honouring <code>Retry-After</code>, backing off exponentially. Read each forum's terms before scaling up — they are separate organizations with separate rules.</p>
+    </div>
+
+    <div class="src">
+      <div class="src-head">
+        <h3 class="src-name">Sourcify</h3>
+        <span class="tag free">No key</span>
+      </div>
+      <p>Open contract-source repository, no authentication. Phase 9 fallback when Etherscan lacks verified source.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sources that need a key</h2>
+
+    <div class="src required">
+      <div class="src-head">
+        <h3 class="src-name">OpenAI — the one to get now</h3>
+        <span class="tag need">Required</span><span class="tag">Phase 4</span>
+      </div>
+      <p>Without it there are no embeddings, no vector search, and no retrieval — Phase 4 cannot start. Two uses, only the first mandatory:</p>
+      <ul>
+        <li><b>Embeddings</b> — <code>text-embedding-3-large</code> at <code>dimensions=1536</code>, settled 14 Aug 2026. pgvector refuses to index above 2000 dimensions, which is why 1536 rather than 3072.</li>
+        <li><b>Generation</b> — optionally the router and analyst nodes too, if you don't use Claude.</li>
+      </ul>
+      <p><b>Set a hard spend cap before Phase 4.</b> It is the first phase containing a loop that can run away, and the backfill embeds the entire corpus in one pass. Verify current per-token rates at the provider rather than trusting any figure in a planning document.</p>
+      <p>Cost shape worth knowing: embedding bills <b>per token, not per dimension</b>. Requesting 1536 dimensions costs exactly what 3072 costs. Narrow vectors are free on the API side and cheaper on the database side — the opposite of most people's intuition.</p>
+      <pre><code>OPENAI_API_KEY=sk-...</code></pre>
+    </div>
+
+    <div class="src">
+      <div class="src-head">
+        <h3 class="src-name">Anthropic — optional, generation only</h3>
+        <span class="tag">Optional</span><span class="tag">Phase 5</span>
+      </div>
+      <p>Useful only if you want Claude writing the analysis. Adds a provider; removes none.</p>
+      <div class="scroller">
+        <table>
+          <thead><tr><th style="width:30%">Model</th><th style="width:28%">ID</th><th>Input / 1M</th><th>Output / 1M</th></tr></thead>
+          <tbody>
+            <tr><td>Claude Opus 5</td><td><code>claude-opus-5</code></td><td class="num">$5.00</td><td class="num">$25.00</td></tr>
+            <tr><td>Claude Sonnet 5</td><td><code>claude-sonnet-5</code></td><td class="num">$3.00 <span style="color:var(--muted)">(intro $2.00 to 31 Aug)</span></td><td class="num">$15.00 <span style="color:var(--muted)">(intro $10.00)</span></td></tr>
+            <tr><td>Claude Haiku 4.5</td><td><code>claude-haiku-4-5</code></td><td class="num">$1.00</td><td class="num">$5.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>A sensible split: <b>Haiku 4.5 for the router</b> (classification is cheap work) and <b>Opus 5 for the analyst</b> (governance risk assessment is not). That mirrors the plan's existing instinct of a small model for routing and a strong one for synthesis.</p>
+      <p>Two API details that differ from older Claude examples you may find: thinking is on by default on Opus 5 — omitting the parameter runs adaptive thinking, and <code>max_tokens</code> caps thinking <em>plus</em> response text together, so size it with headroom. And <code>temperature</code>, <code>top_p</code>, <code>top_k</code> are rejected on current models — steer with prompting.</p>
+      <pre><code>ANTHROPIC_API_KEY=sk-ant-...</code></pre>
+    </div>
+
+    <div class="src">
+      <div class="src-head">
+        <h3 class="src-name">Voyage AI — optional embeddings alternative</h3>
+        <span class="tag">Optional</span><span class="tag">Phase 4</span>
+      </div>
+      <p>Relevant only as a substitute for OpenAI embeddings. <code>voyage-3</code> is 1024 dimensions, comfortably under pgvector's 2000-dimension index ceiling.</p>
+      <p>Not recommended for the initial build purely because the schema, the plan, and the settled decision are all built around 1536. Worth revisiting if Phase 4's eval set says otherwise — the <code>embedding_model</code> column exists precisely so two models can coexist during that comparison.</p>
+    </div>
+
+    <div class="src">
+      <div class="src-head">
+        <h3 class="src-name">Etherscan</h3>
+        <span class="tag free">Free tier</span><span class="tag">Phase 9</span>
+      </div>
+      <p>Fetches verified contract source for addresses referenced in proposals. Free tier is adequate at this volume. Two minutes to register; no rush until Phase 9.</p>
+      <pre><code>ETHERSCAN_API_KEY=...</code></pre>
+    </div>
+
+    <div class="src">
+      <div class="src-head">
+        <h3 class="src-name">Discord or Slack</h3>
+        <span class="tag free">Webhook</span><span class="tag">Phase 10</span>
+      </div>
+      <p>A <b>webhook URL</b>, not an API key — created from the channel's own integration settings. Treat it as a secret regardless: anyone holding it can post to the channel.</p>
+      <pre><code>ALERT_WEBHOOK_URL=https://discord.com/api/webhooks/...</code></pre>
+    </div>
+
+    <div class="src">
+      <div class="src-head">
+        <h3 class="src-name">Cloud provider</h3>
+        <span class="tag">Phase 11</span>
+      </div>
+      <p>An account and deployment credentials rather than an API key. Out of scope until the cloud target is chosen. Set billing alerts before the first deploy.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where keys go</h2>
+    <p class="section-note">Into <code>.env</code>. Never <code>.env.example</code>.</p>
+    <p><code>.env</code> is gitignored, and the Phase 0 test suite fails the build if it ever becomes tracked — specifically guarding the case where a <code>.gitignore</code> entry is added <em>after</em> the file was already staged, which does not untrack it.</p>
+    <p><code>.env.example</code> is committed and holds only local sandbox placeholders. A separate test asserts that every variable read by application code appears there, so a new key cannot silently become tribal knowledge.</p>
+    <pre><code>cp .env.example .env
+# add real keys to .env only</code></pre>
+    <ul>
+      <li><b>Cap spending at the provider</b>, not in application code. A runaway loop cannot exceed a limit it has no power to change.</li>
+      <li><b>Scope keys narrowly.</b> An embeddings-only key cannot be used to run generation if it leaks.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>Get an OpenAI key with a spend cap — the only credential blocking forward progress, needed two phases out. Optionally grab the free Etherscan key at the same time. Everything else is free and unauthenticated, not obtainable, or not needed until the cloud phase.</p>
+  </footer>
+
+</div>

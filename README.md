@@ -10,6 +10,10 @@ The full build plan lives in [`docs/implementation-plan.md`](docs/implementation
 [`docs/phase-2-results.md`](docs/phase-2-results.md). Styled build reports are
 published as private artifacts; links are in the commit messages.
 
+External sources and which need an API key: [`docs/api-keys.md`](docs/api-keys.md).
+Short version — nothing so far needs a credential; the first required one is OpenAI, at
+Phase 4, for embeddings.
+
 ## Quick start
 
 ```bash
