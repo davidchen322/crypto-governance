@@ -6,7 +6,7 @@ PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 RUFF := $(VENV)/bin/ruff
 
-.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast clean
+.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest clean
 
 help: ## Show available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -50,7 +50,13 @@ verify: install ## Full Phase 0+1 acceptance: rebuild from zero, probe, restart,
 	./scripts/verify.sh
 
 verify-fast: install ## Probes only, against an already-running stack
-	$(PYTEST) -m "integration and not persistence" -v
+	$(PYTEST) -m "integration and not persistence and not live" -v
+
+verify-live: install ## Contract tests against the real Snapshot and Discourse APIs
+	$(PYTEST) -m live -v
+
+harvest: install ## Harvest governance data into bronze (make harvest ARGS="--protocol aave")
+	$(PY) -m data_pipeline.harvest $(ARGS)
 
 clean: ## Remove venv and caches
 	rm -rf $(VENV) .pytest_cache .ruff_cache

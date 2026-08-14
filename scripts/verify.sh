@@ -51,7 +51,7 @@ docker compose up -d --wait
 ok "every service reached a healthy state from an empty volume set"
 
 say "Phase 1 — functional probes and Iceberg seed"
-"$PYTEST" -m "integration and not persistence" -v
+"$PYTEST" -m "integration and not persistence and not live" -v
 ok "postgres, pgvector, minio, catalog and spark all exercised end to end"
 
 say "Phase 1 — cycle containers, retain volumes"

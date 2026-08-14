@@ -33,9 +33,10 @@ select = ["E", "F", "I", "UP", "B"]
 testpaths = ["tests"]
 # Integration tests need the docker stack, so they are opt-in. `make verify` selects them
 # explicitly; `make test` stays fast and dependency-free.
-addopts = "-m 'not integration' -q"
+addopts = "-m 'not integration and not live' -q"
 markers = [
     "integration: requires the docker compose stack to be running",
     "seed: writes state that the persistence checks later assert survived a restart",
     "persistence: asserts state survived `docker compose down` (volumes retained)",
+    "live: hits third-party APIs; excluded from make verify so someone else's outage cannot fail the build",
 ]

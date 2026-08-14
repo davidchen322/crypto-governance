@@ -5,18 +5,45 @@ debate, and (later) on-chain contract source — and answers questions about it 
 citations.
 
 The full build plan lives in [`docs/implementation-plan.md`](docs/implementation-plan.md).
-**Phases 0 and 1 are complete**; results are in
-[`docs/phase-0-1-results.md`](docs/phase-0-1-results.md).
+**Phases 0, 1 and 2 are complete**; results are in
+[`docs/phase-0-1-results.md`](docs/phase-0-1-results.md) and
+[`docs/phase-2-results.md`](docs/phase-2-results.md).
 
 ## Quick start
 
 ```bash
 make install     # venv + dependencies
 make up          # start the stack, block until healthy
-make verify      # full Phase 0 + 1 acceptance harness
+make verify      # full acceptance harness
+make harvest ARGS="--all --proposals 20 --topics 15 --with-posts"
 ```
 
 `make help` lists every target.
+
+## Harvesting
+
+```bash
+make harvest ARGS="--protocol aave --proposals 25"
+make harvest ARGS="--all --topics 30 --with-posts"
+```
+
+Raw API responses land in the `warehouse` bucket under content-addressed keys:
+
+```
+snapshot/space=aavedao.eth/<proposal_id>/<content_hash>.json
+discourse/space=governance.aave.com/<topic_id>/<content_hash>.json
+_manifests/<run_id>.json
+```
+
+No date appears in a data key. Re-harvesting unchanged content resolves to a key that
+already exists, so the write is skipped; an edited document hashes differently and lands
+*beside* its previous version rather than overwriting it. Bronze therefore accumulates the
+version history that Phase 3's SCD2 tables are built from, and makes an embedding-model
+change replayable without re-fetching anything.
+
+Coverage is five protocols — Aave, Uniswap, Arbitrum, Optimism, ENS — configured in
+[`config/protocols.py`](config/protocols.py) with Snapshot space ids verified against the
+live API.
 
 ## What runs locally
 
@@ -48,6 +75,11 @@ usable. Instead it:
 
 Step 5 is the one that matters. `docker compose restart` would pass trivially; `down`
 removes the containers, so only state genuinely held in named volumes survives.
+
+Tests that hit Snapshot and Discourse are marked `live` and excluded from `make verify` —
+a red build caused by someone else's maintenance window teaches nothing. Run them
+deliberately with `make verify-live` when changing a client or when a harvest starts
+returning something unexpected; their job is to catch upstream API drift.
 
 ## Layout
 
