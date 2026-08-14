@@ -6,7 +6,7 @@ PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 RUFF := $(VENV)/bin/ruff
 
-.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest clean
+.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest check-openai clean
 
 help: ## Show available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -57,6 +57,9 @@ verify-live: install ## Contract tests against the real Snapshot and Discourse A
 
 harvest: install ## Harvest governance data into bronze (make harvest ARGS="--protocol aave")
 	$(PY) -m data_pipeline.harvest $(ARGS)
+
+check-openai: install ## Verify OPENAI_API_KEY works and returns the expected vector width
+	$(PY) scripts/check_openai.py
 
 clean: ## Remove venv and caches
 	rm -rf $(VENV) .pytest_cache .ruff_cache

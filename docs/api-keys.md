@@ -178,7 +178,21 @@ tribal knowledge.
 ```bash
 cp .env.example .env
 # add real keys to .env only
+make check-openai          # verify before Phase 4
 ```
+
+`make check-openai` is deliberately **not** part of `make verify`. The acceptance harness
+must run without any credential so the stack can be built and tested for free; this is a
+separate, opt-in check. It verifies four things:
+
+1. The key is present and authenticates.
+2. The embedding model is reachable.
+3. `dimensions` was honoured — the model returns **3072 by default**, which cannot go in
+   `VECTOR(1536)` and cannot be HNSW-indexed at all.
+4. The returned vector is unit-normalised, which cosine distance assumes.
+
+Failure modes get specific hints. The most common first failure is `insufficient_quota` —
+a valid key on an account with no credit, which means the billing step was skipped.
 
 Two habits worth keeping:
 
