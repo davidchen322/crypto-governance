@@ -11,6 +11,7 @@ The full build plan lives in [`docs/implementation-plan.md`](docs/implementation
 [`docs/phase-3-results.md`](docs/phase-3-results.md). Styled build reports are
 published as private artifacts; links are in the commit messages.
 
+Querying the data locally: [`docs/querying.md`](docs/querying.md).
 External sources and which need an API key: [`docs/api-keys.md`](docs/api-keys.md).
 Short version — nothing so far needs a credential; the first required one is OpenAI, at
 Phase 4, for embeddings.
@@ -23,6 +24,7 @@ make up          # start the stack, block until healthy
 make verify      # full acceptance harness
 make harvest ARGS="--all --proposals 20 --topics 15 --with-posts"
 make silver       # fold bronze into the SCD2 Iceberg tables
+make sql          # interactive Spark SQL shell
 ```
 
 `make help` lists every target.
