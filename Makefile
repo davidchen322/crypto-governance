@@ -6,7 +6,7 @@ PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 RUFF := $(VENV)/bin/ruff
 
-.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest check-openai silver sql clean
+.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest check-openai silver sql spark-sql clean
 
 help: ## Show available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -61,7 +61,10 @@ harvest: install ## Harvest governance data into bronze (make harvest ARGS="--pr
 check-openai: install ## Verify OPENAI_API_KEY works and returns the expected vector width
 	$(PY) scripts/check_openai.py
 
-sql: ## Interactive Spark SQL shell against the silver tables
+sql: ## Interactive Trino shell — fast, use this for exploring
+	docker compose exec -it trino trino
+
+spark-sql: ## Interactive Spark SQL shell (slower; matches what the jobs run)
 	docker compose exec -it spark spark-sql
 
 silver: ## Build the SCD2 silver tables from bronze (Spark)

@@ -163,6 +163,32 @@ services:
       retries: 6
       start_period: 5s
 
+  # --- Trino --------------------------------------------------------------
+  # An interactive SQL engine over the same Iceberg tables Spark writes. Spark pays ~20s
+  # of JVM startup per query, which is fine for batch jobs and miserable for exploration;
+  # Trino answers in about a second and speaks JDBC, so GUI clients can connect.
+  trino:
+    image: trinodb/trino:483
+    depends_on:
+      iceberg-rest:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "${TRINO_PORT:-8090}:8080"
+    volumes:
+      # Only the catalog directory is mounted, so the image's own config.properties,
+      # jvm.config and node.properties stay in place.
+      - ./docker/trino/catalog:/etc/trino/catalog:ro
+    healthcheck:
+      # A real query, not a port probe — Trino accepts connections well before the
+      # catalog is usable.
+      test: ["CMD", "trino", "--execute", "SELECT 1"]
+      interval: 10s
+      timeout: 30s
+      retries: 20
+      start_period: 40s
+
 volumes:
   pgdata:
   minio_data:

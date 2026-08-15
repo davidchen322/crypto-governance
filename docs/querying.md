@@ -4,7 +4,7 @@ Three layers hold data, each with its own front door.
 
 | Layer | What's in it | How to query |
 | --- | --- | --- |
-| **Silver** (Iceberg) | Typed, versioned proposals and forum posts | `make sql` — Spark SQL shell |
+| **Silver** (Iceberg) | Typed, versioned proposals and forum posts | `make sql` — Trino (fast), or `make spark-sql` |
 | **Bronze** (MinIO) | Raw API responses, content-addressed | MinIO console at `localhost:9001`, or boto3 |
 | **Postgres** | Vectors (empty until Phase 4), Iceberg catalog, Airflow metadata | `psql` on port 55432 |
 
@@ -12,26 +12,49 @@ Every example below was run against the live stack.
 
 ---
 
-## Silver — the main one
+## Silver — two engines, one set of tables
+
+**Trino is the one to reach for.** It answers in about a second; Spark pays ~20 seconds of
+JVM startup per invocation, which is fine for batch jobs and miserable for exploring.
 
 ```bash
-make sql
+make sql            # Trino  — interactive, fast
+make spark-sql      # Spark  — slower, but exactly what the jobs run
 ```
 
-Drops you in an interactive Spark SQL shell with the `gov` catalog wired up. `Ctrl-D` exits.
-For a one-off without the REPL:
+Both read the *same* tables through the *same* Iceberg REST catalog. Nothing is copied or
+synced — this is the engine interoperability the Iceberg format exists to provide, and it is
+a large part of why the lakehouse is worth its complexity here.
+
+Table names differ only in catalog prefix:
+
+| Engine | Reference |
+| --- | --- |
+| Trino | `iceberg.silver.proposal_versions` |
+| Spark | `gov.silver.proposal_versions` |
+
+One-off queries without the REPL:
 
 ```bash
+docker compose exec -T trino trino --execute "SELECT count(*) FROM iceberg.silver.proposal_versions"
 docker compose exec -T spark spark-sql --silent -e "SELECT count(*) FROM gov.silver.proposal_versions;"
 ```
 
-Two tables:
-
 ```sql
-SHOW TABLES IN gov.silver;
-DESCRIBE gov.silver.proposal_versions;
-DESCRIBE gov.silver.forum_posts;
+SHOW TABLES FROM iceberg.silver;
+DESCRIBE iceberg.silver.proposal_versions;
 ```
+
+Trino also listens on **port 8090** for JDBC — point DBeaver, DataGrip, or Superset at
+`jdbc:trino://localhost:8090`, no user or password needed locally.
+
+### The examples below use Spark's `gov.` prefix
+
+Swap `gov.` for `iceberg.` to run any of them in Trino. Two syntax differences worth knowing:
+
+- Iceberg metadata tables are quoted in Trino: `iceberg.silver."proposal_versions$snapshots"`
+  versus Spark's `gov.silver.proposal_versions.snapshots`.
+- Time travel is `FOR VERSION AS OF` / `FOR TIMESTAMP AS OF` in Trino, `VERSION AS OF` in Spark.
 
 ### Always filter on `is_current`
 

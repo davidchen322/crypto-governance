@@ -24,7 +24,7 @@ make up          # start the stack, block until healthy
 make verify      # full acceptance harness
 make harvest ARGS="--all --proposals 20 --topics 15 --with-posts"
 make silver       # fold bronze into the SCD2 Iceberg tables
-make sql          # interactive Spark SQL shell
+make sql          # interactive Trino shell (fast)
 ```
 
 `make help` lists every target.
@@ -62,6 +62,7 @@ live API.
 | MinIO | 9000 / 9001 | S3-compatible object store (console on 9001) |
 | Iceberg REST catalog | 8181 | Table catalog, persisted to Postgres |
 | Spark | — | Local mode, Iceberg jars baked in |
+| Trino | 8090 | Interactive SQL + JDBC over the same tables |
 
 Everything is free. Only the embedding and LLM calls from Phase 4 onward cost money.
 
