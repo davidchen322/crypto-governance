@@ -45,8 +45,24 @@ SHOW TABLES FROM iceberg.silver;
 DESCRIBE iceberg.silver.proposal_versions;
 ```
 
-Trino also listens on **port 8090** for JDBC — point DBeaver, DataGrip, or Superset at
-`jdbc:trino://localhost:8090`, no user or password needed locally.
+### Connecting a GUI client over JDBC
+
+Trino listens on **port 8090**. Point DBeaver, DataGrip, or Superset at:
+
+```
+jdbc:trino://localhost:8090/iceberg/silver?user=trino
+```
+
+**A username is mandatory even though authentication is disabled.** Without one Trino
+returns `401 Basic authentication or X-Trino-Original-User or X-Trino-User must be sent`.
+Any value works — it is an identity label used for query attribution and resource-group
+routing, not a credential. **Leave the password empty.**
+
+In DataGrip specifically, fill the **User** field (`trino` is fine) and leave **Password**
+blank; the driver sends it as the `X-Trino-User` header.
+
+Including `/iceberg/silver` in the URL pre-selects the catalog and schema, so
+`SELECT * FROM proposal_versions` works without fully qualifying every table.
 
 ### The examples below use Spark's `gov.` prefix
 
