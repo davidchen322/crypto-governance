@@ -1,0 +1,278 @@
+# Retrieval evaluation set — DRAFT, awaiting review
+#
+# Every question below was written against documents actually present in silver as of
+# 15 Aug 2026, not invented. Titles and specifics come from the real corpus.
+#
+# HOW TO REVIEW
+#   Cut anything you would not personally judge the same way twice. A question you are
+#   unsure about is worse than no question, because a wobbly label makes the score wobble
+#   for reasons that have nothing to do with retrieval quality.
+#   Target 20 keepers. Over-drafting is deliberate; discarding is the point.
+#
+# FIELDS
+#   id        stable slug, referenced in results
+#   kind      lookup | thematic | cross_source | negative
+#   question  asked verbatim of the retriever
+#   expect    documents that SHOULD be retrieved. Empty list = nothing relevant exists.
+#   notes     why this is the answer — the reasoning a future reader needs
+#
+# `expect` matches on document identity, not chunk. A proposal is matched if any chunk
+# from it is retrieved.
+#
+# WHY NEGATIVES MATTER
+#   A retriever always returns its top k. Ask it something the corpus cannot answer and it
+#   will still hand the analyst five chunks, which the analyst will dutifully write a
+#   confident answer from. Negatives are how that shows up as a number instead of as an
+#   embarrassing demo.
+
+# ==========================================================================
+# LOOKUP — specific, factual, one or two clearly correct documents
+# ==========================================================================
+
+- id: aave-oracle-deprecation
+  kind: lookup
+  question: Which Aave proposal deprecates Chainlink price feeds for long-tail assets?
+  expect:
+    - {source: proposal, id: "0xaa683250ff2e2835b9ac945d6219a35cdca1d4134f49e3bce6763ca8d8944c08"}
+  notes: >
+    LlamaRisk proposal covering feeds Chainlink itself classified as high or very high
+    operational risk. Should not be confused with the low-adoption asset deprecation
+    below, which is a different LlamaRisk proposal about reserves rather than oracles.
+
+- id: aave-low-adoption-offboarding
+  kind: lookup
+  question: Which Aave proposal offboards low-activity reserves and whole deployments?
+  expect:
+    - {source: proposal, id: "0x4ec0c13baf55472ecd538a2fae4bbdb60f30c96621a97ecf4db073b3e65597c7"}
+  notes: >
+    50 reserves plus 21 matured Pendle PTs across eleven deployments; whole-market
+    deprecations on Sonic, Scroll, zkSync, Metis, Soneium and Aptos. The near-twin of the
+    oracle proposal — a retriever that cannot separate these two is the failure this
+    question exists to catch.
+
+- id: ens-security-council-expiry
+  kind: lookup
+  question: When does the ENS DAO Security Council's veto authority expire?
+  expect:
+    - {source: proposal, id: "0x9ed89cf79760eb92d220fee2da08896bf027317f394aab87863011f964e19453"}
+  notes: >
+    24 July 2026, when renounceTimelockRoleByExpiration() becomes callable. The renewal
+    proposal states the date explicitly.
+
+- id: uniswap-four-for-v4-chains
+  kind: lookup
+  question: Which four networks does the Four for V4 proposal deploy Uniswap V4 to?
+  expect:
+    - {source: proposal, id: "0x5ae3426216321df66a67eb677874b725f80e51888ad2da72b382b21669c554ee"}
+  notes: Sei, Etherlink, Pharos and 0G. Proposed by GFX Labs/Oku Trade with no treasury spend.
+
+- id: aave-v4-deployment-targets
+  kind: lookup
+  question: Which chains has Aave proposed deploying V4 on?
+  expect:
+    - {source: proposal, id: "0xe5c4a9387ce1096075f2ad5c3840a915ef730a1ad9180118be8bd4b6f10dacfe"}
+    - {source: proposal, id: "0x483ba786774174ea9620df6964f83787d984d7e5ae524aaa27878ff324e6d00f"}
+    - {source: proposal, id: "0xdca149f83dc6fd292f76a10a20a36a8aa7358255b31cf7f27645d28a1d489b69"}
+  notes: >
+    Avalanche, Arc and Tempo each have their own proposal. Deliberately multi-document —
+    recall@5 should find all three, and a retriever that returns only the first is
+    scoring 0.33 on a question a human would call half-answered.
+
+- id: uniswap-unification
+  kind: lookup
+  question: What is UNIfication in Uniswap governance?
+  expect:
+    - {source: proposal, id: "0x58d854c1f2468db6b67baab026cca1329c7bcaa5bf834146aa7563a5b45ad09f"}
+  notes: >
+    Referenced by several fee-expansion proposals as the source of the expedited process.
+    Tests whether a term defined in one document is findable when other documents only
+    cite it in passing.
+
+- id: arbitrum-arbos-60
+  kind: lookup
+  question: What does the ArbOS 60 Elara upgrade change?
+  expect:
+    - {source: proposal, id: "0x04d6219c392f3f6187779f609d6cad21e3b3d6091809355ad12ba6bb39b55834"}
+  notes: Constitutional AIP. Single clear match.
+
+- id: aave-upgrade-safety-checker
+  kind: lookup
+  question: Which Aave proposal introduces an equivalence checker for upgrade safety?
+  expect:
+    - {source: proposal, id: "0xcf9ca2d7a9b1ee819b6b76f8dae1cdc7fb507e027f044e90d7937b4b264a42c1"}
+  notes: The Concord Equivalence Checker by Certora.
+
+# ==========================================================================
+# THEMATIC — open-ended; several documents are legitimately relevant
+# ==========================================================================
+
+- id: theme-protocol-fee-expansion
+  kind: thematic
+  question: How has Uniswap been expanding protocol fees across chains?
+  expect:
+    - {source: proposal, id: "0x3fda3c04fa106ad45173011ef4dfa5db2f14cd35c3c3a7a40f067a44cbadd5f4"}
+    - {source: proposal, id: "0x0242a914c60945d25873d2a98c6abd9f69cb889c6616e27f3c0ab759f9e8d783"}
+    - {source: proposal, id: "0xc5fd6e916655b293c903b060906c994ff1ff1df348336b3b3e22ceecd2d13d7c"}
+    - {source: proposal, id: "0x34954750c83fdbea3d428e387aa7948eecd66d2f76c35f5588c3f1fd1e1f5c4d"}
+  notes: >
+    A sequence of four fee-expansion proposals. The interesting failure is a retriever
+    that returns four near-identical chunks from ONE of them rather than one chunk from
+    each — good recall, useless answer. Worth watching even though the metric may not
+    catch it.
+
+- id: theme-risk-reduction
+  kind: thematic
+  question: What is Aave doing to reduce risk surface across its deployments?
+  expect:
+    - {source: proposal, id: "0x4ec0c13baf55472ecd538a2fae4bbdb60f30c96621a97ecf4db073b3e65597c7"}
+    - {source: proposal, id: "0xaa683250ff2e2835b9ac945d6219a35cdca1d4134f49e3bce6763ca8d8944c08"}
+    - {source: proposal, id: "0xe40b377bd4a207aaaaf126738e6e0bc18f16f65a34802c3f143697b2d90666ac"}
+  notes: >
+    Both deprecation proposals plus the Risk Framework. Here the two near-twins SHOULD
+    both appear — the inverse of the lookup questions above, which is the point.
+
+- id: theme-delegate-incentives
+  kind: thematic
+  question: Which protocols are running or debating programs to pay delegates?
+  expect:
+    - {source: proposal, id: "0xa06500740b56c647f25bd3edba80bf05b00140afe99d6b0d27c0f1dc93287901"}
+    - {source: proposal, id: "0xb9e775ba4f1fa8cdc8e45c342428c3dabff7f19ce7b8cc4bde7cc6c8e542d963"}
+    - {source: proposal, id: "0xf0ad5ad5a1ee353a65424a83e74f2b8846b16885a4be99af26b5162bfa78c644"}
+    - {source: proposal, id: "0xea4a1505c96ce4ef5c1f88e6cc3ec89d63f3d88219aa97af97b8384d006a5f92"}
+  notes: >
+    Arbitrum RAD, Arbitrum temperature check, ENS delegation incentives, Uniswap delegate
+    rewards. Cross-protocol thematic retrieval is the hardest case in the set — four
+    protocols using four different names for the same idea.
+
+- id: theme-security-councils
+  kind: thematic
+  question: How do these DAOs structure emergency powers and security councils?
+  expect:
+    - {source: proposal, id: "0x9ed89cf79760eb92d220fee2da08896bf027317f394aab87863011f964e19453"}
+    - {source: proposal, id: "0x3e7acd4a47b246382bf9a3aeb71d0fd1562d38dbb9f7b7760445cf9731229b9d"}
+  notes: >
+    ENS renewal and election. Arbitrum's security council election ratification is
+    arguably also relevant — decide whether to include it, and note that ambiguity is
+    itself a reason this question may not be worth keeping.
+
+- id: theme-treasury-management
+  kind: thematic
+  question: What are DAOs doing with idle treasury funds?
+  expect:
+    - {source: proposal, id: "0x703ef86b79590b07f770dd2369666085e112e2a8998a7e2f8011ed755611968c"}
+    - {source: proposal, id: "0x25877ad1de4b9232af7a744dbd9ffb1b023c385aaf15c96c5b016859926416a2"}
+    - {source: proposal, id: "0x0b5fde95f53bbcda7935cdc0d29c852f3447cc324a618b031bd6f4ec3a0aeee0"}
+  notes: >
+    Arbitrum idle-fund consolidation and the 6,000 ETH treasury transfer, plus the ENS
+    endowment investment policy.
+
+- id: theme-v4-rollout
+  kind: thematic
+  question: What is happening with Uniswap v4 rollout and its economics?
+  expect:
+    - {source: proposal, id: "0x3fda3c04fa106ad45173011ef4dfa5db2f14cd35c3c3a7a40f067a44cbadd5f4"}
+    - {source: proposal, id: "0x5ae3426216321df66a67eb677874b725f80e51888ad2da72b382b21669c554ee"}
+    - {source: forum, topic_id: 26162}
+    - {source: forum, topic_id: 26150}
+  notes: Deliberately spans both sources — proposals and their forum threads.
+
+# ==========================================================================
+# CROSS-SOURCE — answer requires both a proposal and its forum debate
+# ==========================================================================
+
+- id: cross-v4-fees-debate
+  kind: cross_source
+  question: What did the Uniswap forum say about activating v4 protocol fees?
+  expect:
+    - {source: forum, topic_id: 26162}
+    - {source: proposal, id: "0x3fda3c04fa106ad45173011ef4dfa5db2f14cd35c3c3a7a40f067a44cbadd5f4"}
+  notes: >
+    Twenty-post thread with the same title as the proposal. The cleanest cross-source
+    pair in the corpus — if this one fails, the join is not working at all.
+
+- id: cross-four-for-v4-debate
+  kind: cross_source
+  question: What did delegates ask about the Four for V4 deployment?
+  expect:
+    - {source: forum, topic_id: 26150}
+    - {source: proposal, id: "0x5ae3426216321df66a67eb677874b725f80e51888ad2da72b382b21669c554ee"}
+  notes: >
+    RFC thread, 8 posts. Checked: L2BEAT's governance team responded, and GFX Labs is
+    answering questions about DAO operational overhead. Reception is broadly positive, so
+    the question asks what delegates *asked* rather than what they objected to — the
+    stronger wording would have made this unanswerable.
+
+- id: cross-aave-v4-mainnet
+  kind: cross_source
+  question: What is the discussion around activating Aave V4 on Ethereum mainnet?
+  expect:
+    - {source: forum, topic_id: 24293}
+  notes: >
+    Twenty-post ARFC thread. No matching Snapshot proposal in the current window —
+    a case where the forum is ahead of the vote, which is exactly the early-warning
+    signal the platform is supposed to surface.
+
+- id: cross-optimism-constitution
+  kind: cross_source
+  question: What does the Optimism Collective's working constitution establish?
+  expect:
+    - {source: forum, topic_id: 55}
+  notes: Forum-only, 20 posts. Tests that forum content is reachable without a proposal anchor.
+
+- id: cross-lombard-collateral-risk
+  kind: cross_source
+  question: Has anyone raised concerns about Lombard LBTC as Aave collateral?
+  expect:
+    - {source: forum, topic_id: 25480}
+  notes: >
+    A single-post thread asking about a 13 August backing-strategy change and its effect
+    on collateral status. Exactly the shape of thing a fund would want flagged, and a
+    hard retrieval case because it is one short post among hundreds.
+
+- id: cross-ens-next-era
+  kind: cross_source
+  question: What is the proposed next era of ENS DAO governance?
+  expect:
+    - {source: forum, topic_id: 22329}
+  notes: Draft executable thread, 20 posts. Forum-only.
+
+# ==========================================================================
+# NEGATIVE — the corpus cannot answer these; the right result is nothing
+# ==========================================================================
+
+- id: neg-compound
+  kind: negative
+  question: What did Compound governance decide about its treasury?
+  expect: []
+  notes: >
+    Compound is not a configured protocol. A retriever that confidently returns Aave
+    treasury chunks here is the exact failure mode negatives exist to expose.
+
+- id: neg-token-price
+  kind: negative
+  question: What is the current price of UNI?
+  expect: []
+  notes: Governance text contains no market data. Plausible-sounding, entirely unanswerable.
+
+- id: neg-solana
+  kind: negative
+  question: Which proposals cover deploying to Solana?
+  expect: []
+  notes: >
+    Many deployment proposals exist (Avalanche, Arc, Tempo, Monad, Sei, Etherlink) so the
+    topic is well represented — but not this chain. Tests discrimination rather than
+    absence.
+
+- id: neg-founder-salary
+  kind: negative
+  question: How much is the Uniswap Foundation CEO paid?
+  expect: []
+  notes: Not in governance text. Tests refusal on a specific-sounding factual question.
+
+- id: neg-future-vote
+  kind: negative
+  question: What will the DAO vote on next month?
+  expect: []
+  notes: >
+    Unanswerable in principle, not just absent from the corpus. Worth keeping precisely
+    because a language model will want to speculate.
