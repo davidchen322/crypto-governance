@@ -6,7 +6,7 @@ PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 RUFF := $(VENV)/bin/ruff
 
-.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest check-openai silver sql spark-sql eval-sources clean
+.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest check-openai silver sql spark-sql embed eval eval-sources clean
 
 help: ## Show available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -60,6 +60,12 @@ harvest: install ## Harvest governance data into bronze (make harvest ARGS="--pr
 
 check-openai: install ## Verify OPENAI_API_KEY works and returns the expected vector width
 	$(PY) scripts/check_openai.py
+
+embed: install ## Embed silver into pgvector (ARGS=--dry-run for cost only)
+	$(PY) -m ai_agent.chains.embeddings $(ARGS)
+
+eval: install ## Score retrieval against the eval set (ARGS="--verbose --save")
+	$(PY) tests/eval/score.py $(ARGS)
 
 eval-sources: install ## Print eval questions with links to their source documents
 	$(PY) scripts/eval_sources.py $(ARGS)

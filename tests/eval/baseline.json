@@ -1,0 +1,259 @@
+{
+  "recorded_at": "2026-08-17T20:52:37.512052+00:00",
+  "k": 5,
+  "threshold": 0.75,
+  "micro_recall": 0.6667,
+  "macro_recall": 0.8158,
+  "negatives_clean": 0,
+  "negatives_total": 5,
+  "by_kind": {
+    "lookup": 0.875,
+    "thematic": 0.5,
+    "cross_source": 1.0
+  },
+  "questions": [
+    {
+      "id": "aave-oracle-deprecation",
+      "kind": "lookup",
+      "expected": 1,
+      "matched": 1,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.3068
+    },
+    {
+      "id": "aave-low-adoption-offboarding",
+      "kind": "lookup",
+      "expected": 1,
+      "matched": 1,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.3364
+    },
+    {
+      "id": "ens-security-council-expiry",
+      "kind": "lookup",
+      "expected": 1,
+      "matched": 1,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.3064
+    },
+    {
+      "id": "uniswap-four-for-v4-chains",
+      "kind": "lookup",
+      "expected": 1,
+      "matched": 1,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.2854
+    },
+    {
+      "id": "aave-v4-deployment-targets",
+      "kind": "lookup",
+      "expected": 3,
+      "matched": 0,
+      "recall": 0.0,
+      "passed": false,
+      "missed": [
+        "proposal:0x483ba7867741",
+        "proposal:0xdca149f83dc6",
+        "proposal:0xe5c4a9387ce1"
+      ],
+      "best_distance": 0.3439
+    },
+    {
+      "id": "uniswap-unification",
+      "kind": "lookup",
+      "expected": 1,
+      "matched": 1,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.28
+    },
+    {
+      "id": "arbitrum-arbos-60",
+      "kind": "lookup",
+      "expected": 1,
+      "matched": 1,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.3609
+    },
+    {
+      "id": "aave-upgrade-safety-checker",
+      "kind": "lookup",
+      "expected": 1,
+      "matched": 1,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.3299
+    },
+    {
+      "id": "theme-protocol-fee-expansion",
+      "kind": "thematic",
+      "expected": 4,
+      "matched": 2,
+      "recall": 0.5,
+      "passed": false,
+      "missed": [
+        "proposal:0x3fda3c04fa10",
+        "proposal:0xc5fd6e916655"
+      ],
+      "best_distance": 0.2846
+    },
+    {
+      "id": "theme-risk-reduction",
+      "kind": "thematic",
+      "expected": 3,
+      "matched": 1,
+      "recall": 0.3333333333333333,
+      "passed": false,
+      "missed": [
+        "proposal:0x4ec0c13baf55",
+        "proposal:0xaa683250ff2e"
+      ],
+      "best_distance": 0.3841
+    },
+    {
+      "id": "theme-delegate-incentives",
+      "kind": "thematic",
+      "expected": 4,
+      "matched": 2,
+      "recall": 0.5,
+      "passed": false,
+      "missed": [
+        "proposal:0xea4a1505c96c",
+        "proposal:0xf0ad5ad5a1ee"
+      ],
+      "best_distance": 0.4624
+    },
+    {
+      "id": "theme-treasury-management",
+      "kind": "thematic",
+      "expected": 3,
+      "matched": 2,
+      "recall": 0.6666666666666666,
+      "passed": false,
+      "missed": [
+        "proposal:0x0b5fde95f53b"
+      ],
+      "best_distance": 0.371
+    },
+    {
+      "id": "theme-v4-rollout",
+      "kind": "thematic",
+      "expected": 4,
+      "matched": 2,
+      "recall": 0.5,
+      "passed": false,
+      "missed": [
+        "forum:26150",
+        "proposal:0x5ae342621632"
+      ],
+      "best_distance": 0.3686
+    },
+    {
+      "id": "cross-v4-fees-debate",
+      "kind": "cross_source",
+      "expected": 2,
+      "matched": 2,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.2622
+    },
+    {
+      "id": "cross-four-for-v4-debate",
+      "kind": "cross_source",
+      "expected": 2,
+      "matched": 2,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.4406
+    },
+    {
+      "id": "cross-aave-v4-mainnet",
+      "kind": "cross_source",
+      "expected": 1,
+      "matched": 1,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.2596
+    },
+    {
+      "id": "cross-optimism-constitution",
+      "kind": "cross_source",
+      "expected": 1,
+      "matched": 1,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.2147
+    },
+    {
+      "id": "cross-lombard-collateral-risk",
+      "kind": "cross_source",
+      "expected": 1,
+      "matched": 1,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.3255
+    },
+    {
+      "id": "cross-ens-next-era",
+      "kind": "cross_source",
+      "expected": 1,
+      "matched": 1,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.3404
+    },
+    {
+      "id": "neg-compound",
+      "kind": "negative",
+      "passed": false,
+      "leaked": 5,
+      "closest": 0.436
+    },
+    {
+      "id": "neg-token-price",
+      "kind": "negative",
+      "passed": false,
+      "leaked": 5,
+      "closest": 0.521
+    },
+    {
+      "id": "neg-solana",
+      "kind": "negative",
+      "passed": false,
+      "leaked": 5,
+      "closest": 0.4886
+    },
+    {
+      "id": "neg-founder-salary",
+      "kind": "negative",
+      "passed": false,
+      "leaked": 5,
+      "closest": 0.485
+    },
+    {
+      "id": "neg-future-vote",
+      "kind": "negative",
+      "passed": false,
+      "leaked": 5,
+      "closest": 0.4315
+    }
+  ]
+}

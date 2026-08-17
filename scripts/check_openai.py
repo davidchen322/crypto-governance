@@ -27,27 +27,14 @@ from pathlib import Path
 
 import requests
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from config.settings import load_dotenv  # noqa: E402
+
 REPO = Path(__file__).resolve().parent.parent
 ENDPOINT = "https://api.openai.com/v1/embeddings"
 PROBE_TEXT = "Aave risk parameter change: LTV increase for wstETH collateral"
 
 GREEN, RED, DIM, RESET = "\033[0;32m", "\033[0;31m", "\033[0;90m", "\033[0m"
-
-
-def load_dotenv(path: Path) -> None:
-    """Minimal .env loader — avoids a dependency for four lines of parsing.
-
-    Values already in the environment win, so `OPENAI_API_KEY=... make check-openai`
-    overrides the file.
-    """
-    if not path.exists():
-        return
-    for line in path.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.strip().strip("'\""))
 
 
 def ok(msg: str) -> None:
@@ -64,7 +51,7 @@ def fail(msg: str, hint: str = "") -> None:
 
 
 def main() -> int:
-    load_dotenv(REPO / ".env")
+    load_dotenv()
 
     model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-large")
     expected_dims = int(os.getenv("EMBEDDING_DIMENSIONS", "1536"))

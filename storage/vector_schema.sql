@@ -40,17 +40,34 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS document_embeddings (
     chunk_id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    proposal_id          VARCHAR(255) NOT NULL,
+
+    -- `source` + `document_id` together identify the document a chunk came from, and map
+    -- directly onto the eval set's label shape ({source: proposal, id: ...} /
+    -- {source: forum, topic_id: ...}). A single proposal_id column could not name a forum
+    -- post without overloading its meaning.
+    source               VARCHAR(20)  NOT NULL,   -- 'proposal' | 'forum'
+    document_id          VARCHAR(255) NOT NULL,   -- proposal_id, or topic_id for forum posts
     protocol_name        VARCHAR(100) NOT NULL,
-    source_content_hash  VARCHAR(64)  NOT NULL,
-    chunk_type           VARCHAR(50)  NOT NULL,
+
+    source_content_hash  VARCHAR(64)  NOT NULL,   -- silver's text identity; drives re-embedding
+    chunk_type           VARCHAR(50)  NOT NULL,   -- proposal_body | forum_post | contract_source
     chunk_index          INT          NOT NULL,
+    heading              VARCHAR(255),            -- section the chunk came from, for citations
     text_chunk           TEXT         NOT NULL,
+    token_count          INT,
+
     embedding_model      VARCHAR(100) NOT NULL,
     embedding            VECTOR(1536) NOT NULL,
-    valid_from           TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    -- Carried from silver so retrieval can be asked historical questions without
+    -- returning today's text and citing it as March's.
+    valid_from           TIMESTAMPTZ  NOT NULL,
     valid_to             TIMESTAMPTZ,
+
     created_at           TIMESTAMPTZ  NOT NULL DEFAULT now(),
+
+    -- Makes the loader idempotent: a re-run resolves to rows that already exist, so
+    -- unchanged text is never paid for twice.
     CONSTRAINT document_embeddings_chunk_unique
         UNIQUE (source_content_hash, chunk_index, embedding_model)
 );
@@ -58,7 +75,7 @@ CREATE TABLE IF NOT EXISTS document_embeddings (
 -- Vectors from different models share no coordinate space, so every similarity query
 -- must filter on embedding_model. This index supports that filter.
 CREATE INDEX IF NOT EXISTS document_embeddings_lookup_idx
-    ON document_embeddings (protocol_name, proposal_id, embedding_model);
+    ON document_embeddings (protocol_name, source, document_id, embedding_model);
 
 CREATE INDEX IF NOT EXISTS document_embeddings_hnsw_idx
     ON document_embeddings USING hnsw (embedding vector_cosine_ops);
