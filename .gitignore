@@ -22,3 +22,7 @@ metastore_db/
 .idea/
 .vscode/
 .DS_Store
+
+# Terminal capture from `make eval-sources`, used to review questions.yaml against
+# the live sources. Regenerable output, not source — it was committed by accident once.
+review.txt
