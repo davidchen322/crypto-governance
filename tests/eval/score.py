@@ -34,7 +34,12 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ai_agent.chains.retrieval import DEFAULT_MAX_DISTANCE, SearchResult, search  # noqa: E402
+from ai_agent.chains.retrieval import (  # noqa: E402
+    DEFAULT_MAX_DISTANCE,
+    DEFAULT_MIN_GAP,
+    SearchResult,
+    search,
+)
 
 QUESTIONS = Path(__file__).parent / "questions.yaml"
 RESULTS = Path(__file__).parent / "baseline.json"
@@ -60,10 +65,10 @@ def retrieved_keys(results: list[SearchResult]) -> set[tuple[str, str]]:
     return {(r.source, r.document_id) for r in results}
 
 
-def score_question(q: dict, k: int, threshold: float) -> dict:
+def score_question(q: dict, k: int, threshold: float, min_gap: float) -> dict:
     if q["kind"] == "negative":
-        # Threshold ON: the question is whether anything survives the cutoff.
-        hits = search(q["question"], k=k, max_distance=threshold)
+        # Cutoffs ON: the question is whether anything survives them.
+        hits = search(q["question"], k=k, max_distance=threshold, min_gap=min_gap)
         return {
             "id": q["id"],
             "kind": q["kind"],
@@ -74,8 +79,8 @@ def score_question(q: dict, k: int, threshold: float) -> dict:
             else None,
         }
 
-    # Threshold OFF: recall measures the ranking, not the cutoff.
-    results = search(q["question"], k=k, max_distance=None)
+    # Cutoffs OFF: recall measures the ranking and the diversity policy, not the cutoff.
+    results = search(q["question"], k=k, max_distance=None, min_gap=None)
     found = retrieved_keys(results)
     expected = {expected_key(e) for e in q["expect"]}
     matched = expected & found
@@ -97,12 +102,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Score retrieval against the eval set")
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--threshold", type=float, default=DEFAULT_MAX_DISTANCE)
+    parser.add_argument("--min-gap", type=float, default=DEFAULT_MIN_GAP)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--save", action="store_true", help=f"write {RESULTS.name}")
     args = parser.parse_args(argv)
 
     questions = yaml.safe_load(QUESTIONS.read_text())
-    scored = [score_question(q, args.k, args.threshold) for q in questions]
+    scored = [score_question(q, args.k, args.threshold, args.min_gap) for q in questions]
 
     positives = [s for s in scored if s["kind"] != "negative"]
     negatives = [s for s in scored if s["kind"] == "negative"]
@@ -137,7 +143,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  {BOLD}micro{RESET}          {micro:.2f}   (documents found / documents expected)")
     print(f"  {BOLD}macro{RESET}          {macro:.2f}   (mean per-question recall)")
 
-    print(f"\n{BOLD}negatives{RESET}  (threshold {args.threshold} — measuring the cutoff)")
+    print(
+        f"\n{BOLD}negatives{RESET}  (distance<={args.threshold}, gap>={args.min_gap} — measuring the cutoff)"
+    )
     print(f"  clean          {clean}/{len(negatives)}")
     for s in negatives:
         if not s["passed"]:
@@ -152,6 +160,7 @@ def main(argv: list[str] | None = None) -> int:
                     "recorded_at": datetime.now(UTC).isoformat(),
                     "k": args.k,
                     "threshold": args.threshold,
+                    "min_gap": args.min_gap,
                     "micro_recall": round(micro, 4),
                     "macro_recall": round(macro, 4),
                     "negatives_clean": clean,

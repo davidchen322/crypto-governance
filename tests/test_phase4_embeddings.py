@@ -121,3 +121,99 @@ def test_mismatched_vector_count_raises_rather_than_truncating():
     vectors, _ = embed_batch(ShortHttp(), "sk-test", "m", 1, ["a", "b"])
     with pytest.raises(ValueError):
         list(zip([make_chunk(0), make_chunk(1)], vectors, strict=True))
+
+
+# --------------------------------------------------------------------------
+# Diversity and flatness — pure logic, no database, no API
+# --------------------------------------------------------------------------
+
+
+def make_result(source, doc_id, distance):
+    from ai_agent.chains.retrieval import SearchResult
+
+    return SearchResult(
+        source=source,
+        document_id=doc_id,
+        protocol_name="aave",
+        chunk_index=0,
+        heading=None,
+        text="t",
+        distance=distance,
+    )
+
+
+def test_capping_per_document_replaces_duplicates_with_new_documents():
+    """Measured before this existed: top-5 chunks averaged 2.0 distinct documents, so a
+    question expecting four could not succeed at k=5 no matter how good the ranking."""
+    from ai_agent.chains.retrieval import _cap_per_document
+
+    ranked = [
+        make_result("proposal", "A", 0.10),
+        make_result("proposal", "A", 0.11),
+        make_result("proposal", "A", 0.12),
+        make_result("proposal", "B", 0.20),
+        make_result("forum", "C", 0.30),
+        make_result("proposal", "D", 0.40),
+    ]
+    kept = _cap_per_document(ranked, k=3, max_per_doc=1)
+    assert [(r.source, r.document_id) for r in kept] == [
+        ("proposal", "A"),
+        ("proposal", "B"),
+        ("forum", "C"),
+    ]
+
+
+def test_capping_preserves_rank_order():
+    from ai_agent.chains.retrieval import _cap_per_document
+
+    ranked = [make_result("proposal", chr(65 + i), 0.1 * i) for i in range(5)]
+    kept = _cap_per_document(ranked, k=5, max_per_doc=1)
+    assert [r.distance for r in kept] == sorted(r.distance for r in kept)
+
+
+def test_same_document_id_in_different_sources_is_not_conflated():
+    """A forum topic and a proposal can share a numeric id; only (source, id) is unique."""
+    from ai_agent.chains.retrieval import _cap_per_document
+
+    ranked = [make_result("proposal", "42", 0.1), make_result("forum", "42", 0.2)]
+    assert len(_cap_per_document(ranked, k=5, max_per_doc=1)) == 2
+
+
+def test_flat_distance_profile_reads_as_unanswerable():
+    """An unanswerable question returns k uniformly-mediocre chunks. That flatness is the
+    signal the absolute distance throws away."""
+    from ai_agent.chains.retrieval import looks_unanswerable
+
+    flat = [make_result("proposal", chr(65 + i), 0.44 + 0.001 * i) for i in range(10)]
+    assert looks_unanswerable(flat, min_gap=0.025)
+
+
+def test_a_clear_winner_reads_as_answerable():
+    from ai_agent.chains.retrieval import looks_unanswerable
+
+    peaked = [make_result("proposal", "A", 0.20)] + [
+        make_result("proposal", chr(66 + i), 0.40 + 0.01 * i) for i in range(9)
+    ]
+    assert not looks_unanswerable(peaked, min_gap=0.025)
+
+
+def test_gap_is_measured_over_a_fixed_window():
+    """The bug this pins: the gap was fitted over 10 results but applied over the 20 that
+    diversity over-fetches. A longer tail raises the mean and widens the gap for free, so
+    two negatives the fit said would be blocked sailed through."""
+    from ai_agent.chains.retrieval import GAP_WINDOW, looks_unanswerable
+
+    flat10 = [make_result("proposal", chr(65 + i), 0.44 + 0.001 * i) for i in range(GAP_WINDOW)]
+    # Same head, plus a long mediocre tail that would inflate an unwindowed mean.
+    with_tail = flat10 + [make_result("proposal", f"T{i}", 0.60 + 0.01 * i) for i in range(20)]
+    assert looks_unanswerable(flat10, min_gap=0.025)
+    assert looks_unanswerable(with_tail, min_gap=0.025), (
+        "verdict changed when a tail was appended — the window is not fixed"
+    )
+
+
+def test_too_few_results_is_not_treated_as_flat():
+    from ai_agent.chains.retrieval import looks_unanswerable
+
+    assert not looks_unanswerable([], min_gap=0.025)
+    assert not looks_unanswerable([make_result("proposal", "A", 0.9)], min_gap=0.025)

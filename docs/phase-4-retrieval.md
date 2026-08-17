@@ -1,6 +1,24 @@
 # Phase 4 — Embeddings, Retrieval and the Baseline
 
-**Status:** Retrieval measured, baseline recorded · **Date:** 16 Aug 2026
+**Status:** Baseline measured, two of three findings fixed · **Date:** 16 Aug 2026
+
+## Current numbers
+
+| Metric | First baseline | After diversity + gap threshold |
+| --- | --- | --- |
+| micro recall@5 | 0.67 | **0.78** |
+| macro recall@5 | 0.82 | **0.88** |
+| lookup | 0.88 | **0.96** |
+| thematic | 0.50 | **0.60** |
+| cross_source | 1.00 | 1.00 |
+| negatives clean | 0/5 | **5/5** |
+
+Both fixes cost nothing — no re-embedding, no extra tokens handed to the analyst. Details
+in *Fixes applied* below. The original baseline and its analysis follow, kept because the
+reasoning is what makes the numbers meaningful.
+
+---
+
 
 The corpus is embedded, `search()` works, and the eval set has produced a number. That
 number is not good, which is the point — it is now possible to tell improvement from
@@ -224,3 +242,64 @@ Then Phase 5 — the LangGraph router, which consumes `search()` as it now stand
 Two things deliberately *not* being done yet: chunk-size tuning (there is no evidence chunk
 size is the problem, and changing it re-embeds everything), and raising k as a fix for
 diversity (it treats the symptom and costs the analyst four times the context).
+
+
+---
+
+## Fixes applied
+
+### Diversity-aware retrieval
+
+`search()` now over-fetches `k x 4` chunks and keeps at most one per document
+(`max_per_document=1`), so k slots hold k distinct documents rather than 2.0 on average.
+
+micro 0.67 -> 0.78, lookup 0.88 -> 0.96, thematic 0.50 -> 0.60 — the same recall as raising
+k to 10, without doubling the analyst's context.
+
+### Two-signal relevance threshold
+
+Absolute distance alone could not separate answerable from unanswerable, because the ranges
+overlap. Adding the *shape* of the distance profile does:
+
+| Rule | Negatives blocked | Positives lost |
+| --- | --- | --- |
+| distance <= 0.48 | 3/5 | 0 |
+| gap >= 0.040 | 5/5 | 7 |
+| **distance <= 0.48 AND gap >= 0.025** | **5/5** | **1** |
+
+An unanswerable question returns k uniformly mediocre chunks — nothing stands out. An
+answerable one has a clear winner. The gap between best and mean captures that; the
+absolute distance discards it.
+
+The one positive lost is `theme-delegate-incentives` (best 0.462, gap 0.013) — a genuinely
+hard cross-protocol question where four DAOs use four different names for the same idea.
+Losing it is the price of blocking five confident wrong answers, and it is the right trade
+for a governance risk tool.
+
+**These constants are fitted on 24 questions.** They are tuned parameters, not discovered
+properties of the embedding space, and want re-validating as the eval set grows.
+
+### The bug that fitting exposed
+
+The first re-measurement gave 3/5 negatives clean, not the 5/5 the sweep predicted. Cause:
+`min_gap` was fitted over 10 results but applied over the 20 that diversity over-fetches. A
+longer tail raises the mean, which widens the gap for free, so two negatives sailed through
+a threshold that the fit said would block them.
+
+Fixed by measuring the gap over a fixed `GAP_WINDOW` of 10 regardless of `k` or the fetch
+multiplier, making the signal independent of retrieval settings. A test pins it by
+appending a mediocre tail and asserting the verdict does not change.
+
+Worth noting how this surfaced: the sweep predicted 5/5, the measurement said 3/5, and the
+disagreement was the bug. Without a recorded prediction there would have been nothing to
+disagree with.
+
+### Still outstanding
+
+**Protocol bleed** is unfixed. Filters help when applied (`protocol=aave, source=proposal`
+takes the failing question from 0/3 to 2/3) but knowing to apply them requires parsing the
+question, which is the Phase 5 router's job. The Phase-4-only alternative — putting the
+protocol name into the chunk text and re-embedding for ~$0.055 — remains untested.
+
+**Thematic recall at 0.60** is the weakest number. Diversity helped; the remaining misses
+are cross-protocol questions where vocabulary differs between DAOs.
