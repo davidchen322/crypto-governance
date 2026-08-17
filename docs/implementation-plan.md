@@ -71,6 +71,12 @@ load-bearing for the archive.
 Bronze holds raw API responses forever and is the replay source. Silver holds versioned
 documents. The vector store is a derived index that can be rebuilt from silver at any time.
 
+Two independent flows. Ingestion runs on a schedule and only writes; query answering runs
+on demand and only reads. Drawing them as one graph invites the mistake of thinking data
+flows *into* the router, which it does not.
+
+### Ingestion — scheduled, write path
+
 ```mermaid
 flowchart TD
   A["Snapshot GraphQL"] --> D
@@ -81,18 +87,36 @@ flowchart TD
   F --> G["Silver: Iceberg tables<br/>proposal_versions, forum_posts"]
   G --> H["Chunk + embed"]
   H --> I["pgvector<br/>document_embeddings"]
-  G --> J["Intent router"]
-  I --> J
-  J --> K["Analyst synthesis"]
+```
+
+### Query answering — on demand, read path
+
+```mermaid
+flowchart TD
+  Q["User question"] --> J["Intent router<br/>small model, sees the question only"]
+  J -->|counts, filters, dates| S["SQL node"]
+  J -->|open-ended themes| V["Vector node"]
+  J -->|both| Y["Hybrid node"]
+  S -->|queries| G["Silver: Iceberg tables"]
+  Y -->|queries| G
+  V -->|queries| I["pgvector: document_embeddings"]
+  Y -->|queries| I
+  G -->|rows| K["Analyst synthesis<br/>with citations"]
+  I -->|chunks| K
   K --> L["FastAPI"]
   L --> M["Next.js dashboard"]
   L --> N["Alert webhooks"]
 ```
 
-The router picks one of three paths per query: SQL against silver for counts, filters and
-dates; vector search for open-ended thematic questions; a hybrid pass for questions blending
-precise constraints with qualitative judgment. Airflow drives the left half on a schedule; the
-right half runs on demand.
+**The router reads the question and nothing else.** It emits one of three labels — SQL
+against silver for counts, filters and dates; vector search for open-ended thematic
+questions; a hybrid pass for questions blending precise constraints with qualitative
+judgment. Only after that decision does an execution node touch a data store, and only the
+*results* reach the analyst.
+
+That direction is the whole point of having a router. It stays cheap precisely because it
+never reads the corpus — a router needing data in order to decide how to fetch data would
+be both circular and expensive.
 
 ---
 
