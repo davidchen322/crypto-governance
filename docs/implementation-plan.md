@@ -299,8 +299,18 @@ each labelled with the documents that ought to come back. Measure recall@5 and r
 > and the retrieved chunk; without a baseline recorded here, regressions become invisible and
 > you end up tuning prompts by vibes.
 
-- **Demo:** `gov search "delegate voting power concentration"` returns ranked chunks with
-  protocol, proposal and date. The eval script prints a recall@5 figure.
+- **Demo:** `gov search "How do DAOs try to reduce reliance on a small number of large
+  delegates?"` returns ranked chunks with protocol, proposal and date. The eval script prints
+  a recall@5 figure.
+
+  > This demo query was originally `"delegate voting power concentration"`. When the CLI was
+  > built and the demo actually run, that query returned **nothing** — best distance 0.551
+  > against a 0.48 ceiling. It is not a bug: the corpus has material adjacent to the topic
+  > but no document about it, and its nearest hit is further away than every deliberately
+  > unanswerable question in the eval set. The threshold declining to bluff is the correct
+  > behaviour. Kept here because a demo query written before the corpus existed, and never
+  > run until exit, is a mistake worth remembering. See `docs/phase-4-retrieval.md`.
+
 - **Exit criteria:** A baseline recall number is committed to the repo. It doesn't need to be
   good yet — it needs to exist.
 

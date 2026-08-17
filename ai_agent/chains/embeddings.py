@@ -51,6 +51,10 @@ class PendingChunk:
     tokens: int
     valid_from: str
     valid_to: str | None
+    # Citation metadata only — never used for retrieval. `document_date` is the governance
+    # date, not `valid_from`, which is merely when the pipeline observed the row.
+    title: str | None = None
+    document_date: str | None = None
 
 
 def load_silver_chunks() -> list[PendingChunk]:
@@ -59,6 +63,7 @@ def load_silver_chunks() -> list[PendingChunk]:
 
     proposals = trino_query("""
         SELECT proposal_id, protocol_name, content_hash, title, body,
+               cast(proposal_created AS varchar) AS document_date,
                cast(valid_from AS varchar) AS valid_from,
                cast(valid_to AS varchar) AS valid_to
         FROM iceberg.silver.proposal_versions
@@ -80,12 +85,15 @@ def load_silver_chunks() -> list[PendingChunk]:
                     tokens=chunk.tokens,
                     valid_from=row["valid_from"],
                     valid_to=row["valid_to"],
+                    title=row["title"],
+                    document_date=row["document_date"],
                 )
             )
 
     posts = trino_query("""
         SELECT cast(topic_id AS varchar) AS topic_id, protocol_name, content_hash,
                topic_title, body_text,
+               cast(post_created_at AS varchar) AS document_date,
                cast(valid_from AS varchar) AS valid_from,
                cast(valid_to AS varchar) AS valid_to
         FROM iceberg.silver.forum_posts
@@ -107,6 +115,8 @@ def load_silver_chunks() -> list[PendingChunk]:
                     tokens=chunk.tokens,
                     valid_from=row["valid_from"],
                     valid_to=row["valid_to"],
+                    title=row["topic_title"],
+                    document_date=row["document_date"],
                 )
             )
     return pending
@@ -165,8 +175,8 @@ def insert(conn: psycopg.Connection, chunks: list[PendingChunk], vectors, model:
             INSERT INTO document_embeddings
                 (source, document_id, protocol_name, source_content_hash, chunk_type,
                  chunk_index, heading, text_chunk, token_count, embedding_model,
-                 chunk_scheme, embedding, valid_from, valid_to)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                 chunk_scheme, embedding, valid_from, valid_to, title, document_date)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             ON CONFLICT ON CONSTRAINT document_embeddings_chunk_unique DO NOTHING
             """,
             [
@@ -185,6 +195,8 @@ def insert(conn: psycopg.Connection, chunks: list[PendingChunk], vectors, model:
                     str(vec),
                     c.valid_from,
                     c.valid_to or None,
+                    c.title,
+                    c.document_date or None,
                 )
                 for c, vec in zip(chunks, vectors, strict=True)
             ],

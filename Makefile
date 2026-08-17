@@ -70,6 +70,12 @@ eval: install ## Score retrieval against the eval set (ARGS="--verbose --save")
 eval-sources: install ## Print eval questions with links to their source documents
 	$(PY) scripts/eval_sources.py $(ARGS)
 
+search: install ## Semantic search from the shell (make search Q="oracle deprecation")
+	$(VENV)/bin/gov search "$(Q)" $(ARGS)
+
+backfill-metadata: install ## Fill title/document_date on embeddings from silver (no re-embed)
+	$(PY) scripts/backfill_citation_metadata.py $(ARGS)
+
 sql: ## Interactive Trino shell — fast, use this for exploring
 	docker compose exec -it trino trino
 

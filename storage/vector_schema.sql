@@ -56,6 +56,17 @@ CREATE TABLE IF NOT EXISTS document_embeddings (
     text_chunk           TEXT         NOT NULL,
     token_count          INT,
 
+    -- Citation metadata, carried from silver so a result can be shown to a human without a
+    -- second round trip. Neither is used for retrieval — they exist so `gov search` can name
+    -- the document instead of printing a 66-character proposal hash.
+    --
+    -- `document_date` is the GOVERNANCE date (proposal_created / post_created_at), which is
+    -- emphatically not `valid_from`. valid_from is when our pipeline first observed the row,
+    -- so on a corpus harvested in one pass every row shares it — displaying that as "date"
+    -- would show the harvest date on every result and look plausible while being useless.
+    title                VARCHAR(512),
+    document_date        TIMESTAMPTZ,
+
     embedding_model      VARCHAR(100) NOT NULL,
     -- How the text was chunked. Part of the identity because the loader's skip check is
     -- keyed on the SOURCE hash, which does not move when chunking logic changes — the same

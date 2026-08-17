@@ -232,3 +232,50 @@ def test_search_returns_only_the_active_scheme():
     prefixes = {"v2": ("Aave —", "Uniswap —", "Arbitrum —", "Optimism —", "ENS —")}
     if CHUNK_SCHEME == "v2":
         assert all(r.text.startswith(prefixes["v2"]) for r in results)
+
+
+# --------------------------------------------------------------------------
+# Citation metadata — carried from silver, never used for ranking
+# --------------------------------------------------------------------------
+
+
+def test_every_chunk_has_a_title_and_a_governance_date(conn):
+    """Without these a result can only be shown as a 66-character hash."""
+    missing = conn.execute(
+        "SELECT count(*) FROM document_embeddings WHERE title IS NULL OR document_date IS NULL"
+    ).fetchone()[0]
+    assert missing == 0
+
+
+def test_document_date_is_not_the_harvest_date(conn):
+    """The trap: `valid_from` is when the pipeline observed a row. This corpus was harvested
+    in one pass, so every valid_from lands on the same day. A `document_date` that mirrored
+    it would render the harvest date on every result and look perfectly plausible.
+
+    The governance dates must span years, because the proposals do."""
+    span = conn.execute(
+        "SELECT count(DISTINCT document_date::date), count(DISTINCT valid_from::date) "
+        "FROM document_embeddings"
+    ).fetchone()
+    assert span[1] <= 2, "valid_from should be ~one harvest day; the premise has changed"
+    assert span[0] > 50, f"only {span[0]} distinct governance dates — looks like valid_from"
+
+
+def test_document_dates_are_not_in_the_future(conn):
+    """A unix-seconds field decoded as milliseconds lands in the year 57000 and nothing
+    upstream complains."""
+    bad = conn.execute(
+        "SELECT count(*) FROM document_embeddings WHERE document_date > now() + interval '1 day'"
+    ).fetchone()[0]
+    assert bad == 0
+
+
+def test_titles_match_the_prefix_embedded_in_v2_chunk_text(conn):
+    """The stored title and the title inside the embedded text come from the same silver
+    column. If they drift, citations name one document and the evidence quotes another."""
+    mismatched = conn.execute("""
+        SELECT count(*) FROM document_embeddings
+        WHERE chunk_scheme = 'v2' AND title IS NOT NULL AND length(title) > 12
+          AND position(substring(title from 1 for 12) in text_chunk) = 0
+    """).fetchone()[0]
+    assert mismatched == 0

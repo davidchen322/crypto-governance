@@ -11,6 +11,9 @@ dependencies = [
     "tiktoken>=0.7",
 ]
 
+[project.scripts]
+gov = "ai_agent.cli:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",

@@ -70,6 +70,12 @@ class SearchResult:
     heading: str | None
     text: str
     distance: float
+    # Citation metadata. Not part of ranking — these exist so a result can be shown to a
+    # human without a second lookup. `document_date` is the governance date (when the
+    # proposal or post was created), NOT `valid_from`, which is when the pipeline observed
+    # the row and is identical across a single-pass harvest.
+    title: str | None = None
+    document_date: datetime | None = None
 
     @property
     def similarity(self) -> float:
@@ -185,7 +191,7 @@ def search(
 
     sql = f"""
         SELECT source, document_id, protocol_name, chunk_index, heading, text_chunk,
-               embedding <=> %s::vector AS distance
+               embedding <=> %s::vector AS distance, title, document_date
         FROM document_embeddings
         WHERE {" AND ".join(where)}
         ORDER BY embedding <=> %s::vector
@@ -211,6 +217,8 @@ def search(
             heading=r[4],
             text=r[5],
             distance=float(r[6]),
+            title=r[7],
+            document_date=r[8],
         )
         for r in rows
     ]
