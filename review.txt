@@ -1,0 +1,191 @@
+python3 -m venv .venv
+.venv/bin/pip install --quiet --upgrade pip
+.venv/bin/pip install --quiet -e ".[dev]"
+.venv/bin/python scripts/eval_sources.py 
+
+[1maave-oracle-deprecation[0m  [0;32m[lookup][0m
+  Which Aave proposal deprecates Chainlink price feeds for long-tail assets?
+  · [aave] [ARFC] Oracle Deprecation for Long-tail Assets Across Aave V2 an
+    [0;90mhttps://snapshot.box/#/s:aavedao.eth/proposal/0xaa683250ff2e2835b9ac945d6219a35cdca1d4134f49e3bce6763ca8d8944c08[0m
+    [0;90mforum: https://governance.aave.com/t/arfc-oracle-deprecation-for-long-tail-assets-across-aave-v2-and-v3/25400[0m
+
+[1maave-low-adoption-offboarding[0m  [0;32m[lookup][0m
+  Which Aave proposal offboards low-activity reserves and whole deployments?
+  · [aave] [ARFC] Low Adoption Asset Deprecation on Aave V3
+    [0;90mhttps://snapshot.box/#/s:aavedao.eth/proposal/0x4ec0c13baf55472ecd538a2fae4bbdb60f30c96621a97ecf4db073b3e65597c7[0m
+    [0;90mforum: https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401[0m
+
+[1mens-security-council-expiry[0m  [0;32m[lookup][0m
+  When does the ENS DAO Security Council's veto authority expire?
+  · [ens] [6.45][Social] Renewal of the Security Council
+    [0;90mhttps://snapshot.box/#/s:ens.eth/proposal/0x9ed89cf79760eb92d220fee2da08896bf027317f394aab87863011f964e19453[0m
+    [0;90mforum: https://discuss.ens.domains/t/temp-check-renewal-of-the-security-council/22145[0m
+
+[1muniswap-four-for-v4-chains[0m  [0;32m[lookup][0m
+  Which four networks does the Four for V4 proposal deploy Uniswap V4 to?
+  · [uniswap] [Temp Check] - Four for V4
+    [0;90mhttps://snapshot.box/#/s:uniswapgovernance.eth/proposal/0x5ae3426216321df66a67eb677874b725f80e51888ad2da72b382b21669c554ee[0m
+    [0;90mforum: https://gov.uniswap.org/t/rfc-four-for-v4/26150?u=gfxlabs[0m
+
+[1maave-v4-deployment-targets[0m  [0;32m[lookup][0m
+  Which chains has Aave proposed deploying V4 on?
+  · [aave] [ARFC] Deploy Aave V4 on Avalanche
+    [0;90mhttps://snapshot.box/#/s:aavedao.eth/proposal/0xe5c4a9387ce1096075f2ad5c3840a915ef730a1ad9180118be8bd4b6f10dacfe[0m
+    [0;90mforum: https://governance.aave.com/t/arfc-deploy-aave-v4-on-avalanche/25165[0m
+  · [aave] [Temp Check] Deploy Aave V4 on Arc
+    [0;90mhttps://snapshot.box/#/s:aavedao.eth/proposal/0x483ba786774174ea9620df6964f83787d984d7e5ae524aaa27878ff324e6d00f[0m
+    [0;90mforum: https://governance.aave.com/t/temp-check-deploy-aave-v4-on-arc/24990[0m
+  · [aave] [Temp Check] Deploy Aave V4 on Tempo
+    [0;90mhttps://snapshot.box/#/s:aavedao.eth/proposal/0xdca149f83dc6fd292f76a10a20a36a8aa7358255b31cf7f27645d28a1d489b69[0m
+    [0;90mforum: https://governance.aave.com/t/temp-check-deploy-aave-v4-on-tempo/25333[0m
+
+[1muniswap-unification[0m  [0;32m[lookup][0m
+  What is UNIfication in Uniswap governance?
+  · [uniswap] UNIfication
+    [0;90mhttps://snapshot.box/#/s:uniswapgovernance.eth/proposal/0x58d854c1f2468db6b67baab026cca1329c7bcaa5bf834146aa7563a5b45ad09f[0m
+    [0;90mforum: https://gov.uniswap.org/t/unification-proposal/25881[0m
+
+[1marbitrum-arbos-60[0m  [0;32m[lookup][0m
+  What does the ArbOS 60 Elara upgrade change?
+  · [arbitrum] [Constitutional] AIP: ArbOS 60 Elara
+    [0;90mhttps://snapshot.box/#/s:arbitrumfoundation.eth/proposal/0x04d6219c392f3f6187779f609d6cad21e3b3d6091809355ad12ba6bb39b55834[0m
+    [0;90mforum: https://forum.arbitrum.foundation/t/constitutional-aip-arbos-60-elara/30601[0m
+
+[1maave-upgrade-safety-checker[0m  [0;32m[lookup][0m
+  Which Aave proposal introduces an equivalence checker for upgrade safety?
+  · [aave] [ARFC] Strengthening Upgrade Safety: Concord Equivalence Checker
+    [0;90mhttps://snapshot.box/#/s:aavedao.eth/proposal/0xcf9ca2d7a9b1ee819b6b76f8dae1cdc7fb507e027f044e90d7937b4b264a42c1[0m
+    [0;90mforum: https://governance.aave.com/t/arfc-strengthening-upgrade-safety-concord-equivalence-checker-by-certora/24713[0m
+
+[1mtheme-protocol-fee-expansion[0m  [0;36m[thematic][0m
+  How has Uniswap been expanding protocol fees across chains?
+  · [uniswap] [Temp Check] Activate v4 Protocol Fees
+    [0;90mhttps://snapshot.box/#/s:uniswapgovernance.eth/proposal/0x3fda3c04fa106ad45173011ef4dfa5db2f14cd35c3c3a7a40f067a44cbadd5f4[0m
+    [0;90mforum: https://gov.uniswap.org/t/temp-check-activate-v4-protocol-fees[0m
+  · [uniswap] [Temp Check] Protocol Fee Expansion: Eight More Chains and Remai
+    [0;90mhttps://snapshot.box/#/s:uniswapgovernance.eth/proposal/0x0242a914c60945d25873d2a98c6abd9f69cb889c6616e27f3c0ab759f9e8d783[0m
+  · [uniswap] [Temp Check] Protocol Fee Expansion: Robinhood Chain
+    [0;90mhttps://snapshot.box/#/s:uniswapgovernance.eth/proposal/0xc5fd6e916655b293c903b060906c994ff1ff1df348336b3b3e22ceecd2d13d7c[0m
+    [0;90mforum: https://gov.uniswap.org/t/temp-check-protocol-fee-expansion-robinhood-chain/26168[0m
+  · [uniswap] [Temp Check] Protocol Fee Expansion: Three More Chains
+    [0;90mhttps://snapshot.box/#/s:uniswapgovernance.eth/proposal/0x34954750c83fdbea3d428e387aa7948eecd66d2f76c35f5588c3f1fd1e1f5c4d[0m
+    [0;90mforum: https://gov.uniswap.org/t/temp-check-protocol-fee-expansion-three-more-chains/26108[0m
+
+[1mtheme-risk-reduction[0m  [0;36m[thematic][0m
+  What is Aave doing to reduce risk surface across its deployments?
+  · [aave] [ARFC] Low Adoption Asset Deprecation on Aave V3
+    [0;90mhttps://snapshot.box/#/s:aavedao.eth/proposal/0x4ec0c13baf55472ecd538a2fae4bbdb60f30c96621a97ecf4db073b3e65597c7[0m
+    [0;90mforum: https://governance.aave.com/t/arfc-low-adoption-asset-deprecation-on-aave-v3/25401[0m
+  · [aave] [ARFC] Oracle Deprecation for Long-tail Assets Across Aave V2 an
+    [0;90mhttps://snapshot.box/#/s:aavedao.eth/proposal/0xaa683250ff2e2835b9ac945d6219a35cdca1d4134f49e3bce6763ca8d8944c08[0m
+    [0;90mforum: https://governance.aave.com/t/arfc-oracle-deprecation-for-long-tail-assets-across-aave-v2-and-v3/25400[0m
+  · [aave] [ARFC] Aave Risk Framework
+    [0;90mhttps://snapshot.box/#/s:aavedao.eth/proposal/0xe40b377bd4a207aaaaf126738e6e0bc18f16f65a34802c3f143697b2d90666ac[0m
+    [0;90mforum: https://governance.aave.com/t/arfc-aave-risk-framework/25114[0m
+
+[1mtheme-delegate-incentives[0m  [0;36m[thematic][0m
+  Which protocols are running or debating programs to pay delegates?
+  · [arbitrum] Rewarding Active Delegates (RAD) Program
+    [0;90mhttps://snapshot.box/#/s:arbitrumfoundation.eth/proposal/0xa06500740b56c647f25bd3edba80bf05b00140afe99d6b0d27c0f1dc93287901[0m
+    [0;90mforum: https://forum.arbitrum.foundation/t/rewarding-active-delegates-rad-program/30249[0m
+  · [arbitrum] [Temperature Check] Should we try a Delegate Incentive Program l
+    [0;90mhttps://snapshot.box/#/s:arbitrumfoundation.eth/proposal/0xb9e775ba4f1fa8cdc8e45c342428c3dabff7f19ce7b8cc4bde7cc6c8e542d963[0m
+    [0;90mforum: https://forum.arbitrum.foundation/t/arbitrum-triple-dip-delegate-incentive-program/30054?u=paulofonseca[0m
+  · [ens] [6.31] [Temp Check] Delegation Incentives Program
+    [0;90mhttps://snapshot.box/#/s:ens.eth/proposal/0xf0ad5ad5a1ee353a65424a83e74f2b8846b16885a4be99af26b5162bfa78c644[0m
+    [0;90mforum: https://discuss.ens.domains/t/temp-check-delegation-incentives-program/21824[0m
+  · [uniswap] Uniswap Delegate Reward Initiative - Cycle 4
+    [0;90mhttps://snapshot.box/#/s:uniswapgovernance.eth/proposal/0xea4a1505c96ce4ef5c1f88e6cc3ec89d63f3d88219aa97af97b8384d006a5f92[0m
+    [0;90mforum: https://gov.uniswap.org/t/uniswap-delegate-reward-initiative-cycle-4/25764?u=doo_stablelab[0m
+
+[1mtheme-security-councils[0m  [0;36m[thematic][0m
+  How do these DAOs structure emergency powers and security councils?
+  · [ens] [6.45][Social] Renewal of the Security Council
+    [0;90mhttps://snapshot.box/#/s:ens.eth/proposal/0x9ed89cf79760eb92d220fee2da08896bf027317f394aab87863011f964e19453[0m
+    [0;90mforum: https://discuss.ens.domains/t/temp-check-renewal-of-the-security-council/22145[0m
+  · [ens] [6.47] [Social] Election of the New ENS DAO Security Council
+    [0;90mhttps://snapshot.box/#/s:ens.eth/proposal/0x3e7acd4a47b246382bf9a3aeb71d0fd1562d38dbb9f7b7760445cf9731229b9d[0m
+    [0;90mforum: https://discuss.ens.domains/t/draft-social-proposal-for-a-new-security-council/22219[0m
+
+[1mtheme-treasury-management[0m  [0;36m[thematic][0m
+  What are DAOs doing with idle treasury funds?
+  · [arbitrum] Automate the Consolidation of Idle Funds into the Treasury Manag
+    [0;90mhttps://snapshot.box/#/s:arbitrumfoundation.eth/proposal/0x703ef86b79590b07f770dd2369666085e112e2a8998a7e2f8011ed755611968c[0m
+    [0;90mforum: https://forum.arbitrum.foundation/t/automate-the-consolidation-of-idle-funds-into-the-treasury-management-portfolio/30579?u=entropy[0m
+  · [arbitrum] Transfer 6,000 ETH and Idle Stablecoins from the Treasury to the
+    [0;90mhttps://snapshot.box/#/s:arbitrumfoundation.eth/proposal/0x25877ad1de4b9232af7a744dbd9ffb1b023c385aaf15c96c5b016859926416a2[0m
+    [0;90mforum: https://forum.arbitrum.foundation/t/transfer-6-000-eth-and-idle-stablecoins-from-the-treasury-to-the-treasury-management-portfolio/30691[0m
+  · [ens] [6.46] [Social] 2026 Endowment Investment Policy Update
+    [0;90mhttps://snapshot.box/#/s:ens.eth/proposal/0x0b5fde95f53bbcda7935cdc0d29c852f3447cc324a618b031bd6f4ec3a0aeee0[0m
+    [0;90mforum: https://discuss.ens.domains/t/6-46-social-2026-endowment-investment-policy-update/22106[0m
+
+[1mtheme-v4-rollout[0m  [0;36m[thematic][0m
+  What is happening with Uniswap v4 rollout and its economics?
+  · [uniswap] [Temp Check] Activate v4 Protocol Fees
+    [0;90mhttps://snapshot.box/#/s:uniswapgovernance.eth/proposal/0x3fda3c04fa106ad45173011ef4dfa5db2f14cd35c3c3a7a40f067a44cbadd5f4[0m
+    [0;90mforum: https://gov.uniswap.org/t/temp-check-activate-v4-protocol-fees[0m
+  · [uniswap] [Temp Check] - Four for V4
+    [0;90mhttps://snapshot.box/#/s:uniswapgovernance.eth/proposal/0x5ae3426216321df66a67eb677874b725f80e51888ad2da72b382b21669c554ee[0m
+    [0;90mforum: https://gov.uniswap.org/t/rfc-four-for-v4/26150?u=gfxlabs[0m
+  · [uniswap] [Temp Check] Activate v4 Protocol Fees
+    [0;90mhttps://gov.uniswap.org/t/temp-check-activate-v4-protocol-fees/26162[0m
+  · [uniswap] [RFC] Four for V4
+    [0;90mhttps://gov.uniswap.org/t/rfc-four-for-v4/26150[0m
+
+[1mcross-v4-fees-debate[0m  [0;33m[cross_source][0m
+  What did the Uniswap forum say about activating v4 protocol fees?
+  · [uniswap] [Temp Check] Activate v4 Protocol Fees
+    [0;90mhttps://gov.uniswap.org/t/temp-check-activate-v4-protocol-fees/26162[0m
+  · [uniswap] [Temp Check] Activate v4 Protocol Fees
+    [0;90mhttps://snapshot.box/#/s:uniswapgovernance.eth/proposal/0x3fda3c04fa106ad45173011ef4dfa5db2f14cd35c3c3a7a40f067a44cbadd5f4[0m
+    [0;90mforum: https://gov.uniswap.org/t/temp-check-activate-v4-protocol-fees[0m
+
+[1mcross-four-for-v4-debate[0m  [0;33m[cross_source][0m
+  What did delegates ask about the Four for V4 deployment?
+  · [uniswap] [RFC] Four for V4
+    [0;90mhttps://gov.uniswap.org/t/rfc-four-for-v4/26150[0m
+  · [uniswap] [Temp Check] - Four for V4
+    [0;90mhttps://snapshot.box/#/s:uniswapgovernance.eth/proposal/0x5ae3426216321df66a67eb677874b725f80e51888ad2da72b382b21669c554ee[0m
+    [0;90mforum: https://gov.uniswap.org/t/rfc-four-for-v4/26150?u=gfxlabs[0m
+
+[1mcross-aave-v4-mainnet[0m  [0;33m[cross_source][0m
+  What is the discussion around activating Aave V4 on Ethereum mainnet?
+  · [aave] [ARFC] Aave V4 Activation on Ethereum Mainnet
+    [0;90mhttps://governance.aave.com/t/arfc-aave-v4-activation-on-ethereum-mainnet/24293[0m
+
+[1mcross-optimism-constitution[0m  [0;33m[cross_source][0m
+  What does the Optimism Collective's working constitution establish?
+  · [optimism] Working Constitution of the Optimism Collective
+    [0;90mhttps://gov.optimism.io/t/working-constitution-of-the-optimism-collective/55[0m
+
+[1mcross-lombard-collateral-risk[0m  [0;33m[cross_source][0m
+  Has anyone raised concerns about Lombard LBTC as Aave collateral?
+  · [aave] Lombard LBTC backing strategy change
+    [0;90mhttps://governance.aave.com/t/lombard-lbtc-backing-strategy-change/25480[0m
+
+[1mcross-ens-next-era[0m  [0;33m[cross_source][0m
+  What is the proposed next era of ENS DAO governance?
+  · [ens] [Draft] [Executable] Next Era of ENS DAO: Empowering the ENS Fou
+    [0;90mhttps://discuss.ens.domains/t/draft-executable-next-era-of-ens-dao-empowering-the-ens-foundation/22329[0m
+
+[1mneg-compound[0m  [0;90m[negative][0m
+  What did Compound governance decide about its treasury?
+  [0;90mexpect: nothing — the corpus cannot answer this[0m
+
+[1mneg-token-price[0m  [0;90m[negative][0m
+  What is the current price of UNI?
+  [0;90mexpect: nothing — the corpus cannot answer this[0m
+
+[1mneg-solana[0m  [0;90m[negative][0m
+  Which proposals cover deploying to Solana?
+  [0;90mexpect: nothing — the corpus cannot answer this[0m
+
+[1mneg-founder-salary[0m  [0;90m[negative][0m
+  How much is the Uniswap Foundation CEO paid?
+  [0;90mexpect: nothing — the corpus cannot answer this[0m
+
+[1mneg-future-vote[0m  [0;90m[negative][0m
+  What will the DAO vote on next month?
+  [0;90mexpect: nothing — the corpus cannot answer this[0m
+
+25 question(s) shown. All labels resolve.

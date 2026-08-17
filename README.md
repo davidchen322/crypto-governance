@@ -12,6 +12,7 @@ The full build plan lives in [`docs/implementation-plan.md`](docs/implementation
 published as private artifacts; links are in the commit messages.
 
 Querying the data locally: [`docs/querying.md`](docs/querying.md).
+How documents are split for embedding: [`docs/chunking.md`](docs/chunking.md).
 External sources and which need an API key: [`docs/api-keys.md`](docs/api-keys.md).
 Short version — nothing so far needs a credential; the first required one is OpenAI, at
 Phase 4, for embeddings.

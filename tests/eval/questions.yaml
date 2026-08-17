@@ -144,17 +144,6 @@
     rewards. Cross-protocol thematic retrieval is the hardest case in the set — four
     protocols using four different names for the same idea.
 
-- id: theme-security-councils
-  kind: thematic
-  question: How do these DAOs structure emergency powers and security councils?
-  expect:
-    - {source: proposal, id: "0x9ed89cf79760eb92d220fee2da08896bf027317f394aab87863011f964e19453"}
-    - {source: proposal, id: "0x3e7acd4a47b246382bf9a3aeb71d0fd1562d38dbb9f7b7760445cf9731229b9d"}
-  notes: >
-    ENS renewal and election. Arbitrum's security council election ratification is
-    arguably also relevant — decide whether to include it, and note that ambiguity is
-    itself a reason this question may not be worth keeping.
-
 - id: theme-treasury-management
   kind: thematic
   question: What are DAOs doing with idle treasury funds?

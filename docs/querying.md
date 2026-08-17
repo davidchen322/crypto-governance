@@ -221,9 +221,14 @@ in the browser.
 
 ```python
 import boto3, json
-s3 = boto3.client("s3", endpoint_url="http://localhost:9000",
-                  aws_access_key_id="minioadmin", aws_secret_access_key="minioadmin",
-                  region_name="us-east-1")
+
+s3 = boto3.client(
+    "s3",
+    endpoint_url="http://localhost:9000",
+    aws_access_key_id="minioadmin",
+    aws_secret_access_key="minioadmin",
+    region_name="us-east-1",
+)
 
 keys = s3.list_objects_v2(Bucket="warehouse", Prefix="snapshot/space=aavedao.eth/")["Contents"]
 doc = json.loads(s3.get_object(Bucket="warehouse", Key=keys[0]["Key"])["Body"].read())

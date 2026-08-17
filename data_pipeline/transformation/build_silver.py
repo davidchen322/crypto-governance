@@ -12,10 +12,11 @@ a live API. Two consequences the design leans on:
     Bronze never overwrites (an existing key is skipped), so an object's mtime *is* the
     moment that content was first observed.
 
-The write is a guarded MERGE. The guard is not decoration: Iceberg's copy-on-write MERGE
-commits an `overwrite` snapshot rewriting every record even when no row changes, so an
-unguarded re-run leaves the data correct but the snapshot log useless. `merge()` counts the
-new and closed-out rows first and skips the statement when both are zero.
+The write is a guarded MERGE, and the guard compares the WHOLE row — see `merge()` for the
+two failure modes it sits between. Briefly: an unguarded MERGE rewrites every record on
+every run and ruins the snapshot log; a guard narrowed to the SCD2 validity columns misses
+changes to derived columns and silently serves stale data through a run that looks
+successful.
 
 Known limitation, stated plainly: content addressing cannot represent a revert. If a
 document goes A -> B -> A, the third state hashes to a key that already exists, so no
@@ -44,7 +45,30 @@ HOST_TO_PROTOCOL = {p.discourse_host: p.name for p in PROTOCOLS}
 
 # Discourse serves post bodies as HTML. Embeddings want prose, so a stripped copy rides
 # alongside the verbatim original — never instead of it.
+#
+# Block-level tags become newlines BEFORE tags are stripped. An earlier version collapsed
+# all whitespace including newlines, which produced text that was correct but structurally
+# flat, and Phase 4's chunker splits on markdown headings — which need line starts to
+# exist. Measured consequence: zero of 328 posts contained a single newline, so heading
+# splitting could never fire, and one 2,123-character post whose text began with "#" was
+# read as a single heading with an empty body and dropped from silver entirely.
+HTML_BLOCK_END = r"(?i)</(p|div|li|ul|ol|h[1-6]|blockquote|tr|table|pre)>|<br\s*/?>"
 HTML_TAG = r"<[^>]+>"
+
+# Discourse emits entity-encoded punctuation in `cooked`. Left undecoded these embed as
+# literal noise — 52 posts in the current corpus carry at least one. `&amp;` is decoded
+# last so `&amp;lt;` resolves to `&lt;` rather than being double-decoded to `<`.
+HTML_ENTITIES = [
+    (r"&nbsp;", " "),
+    (r"&lt;", "<"),
+    (r"&gt;", ">"),
+    (r"&quot;", '"'),
+    (r"&#39;", "'"),
+    (r"&hellip;", "…"),
+    (r"&mdash;", "—"),
+    (r"&ndash;", "–"),
+    (r"&amp;", "&"),
+]
 
 
 def protocol_lookup(mapping: dict[str, str], column):
@@ -255,16 +279,17 @@ def build_posts(spark: SparkSession) -> DataFrame:
         .withColumn("reply_count", F.col("post.reply_count").cast("int"))
     )
 
-    cleaned = posts.withColumn(
-        "body_text",
-        F.trim(
-            F.regexp_replace(
-                F.regexp_replace(F.coalesce(F.col("body_html"), F.lit("")), HTML_TAG, " "),
-                r"\s+",
-                " ",
-            )
-        ),
-    )
+    # Order matters: block ends become newlines, then remaining tags go, then entities are
+    # decoded, then only *horizontal* whitespace is collapsed so paragraph breaks survive.
+    text = F.regexp_replace(F.coalesce(F.col("body_html"), F.lit("")), HTML_BLOCK_END, "\n")
+    text = F.regexp_replace(text, HTML_TAG, " ")
+    for entity, char in HTML_ENTITIES:
+        text = F.regexp_replace(text, entity, char)
+    text = F.regexp_replace(text, r"[ \t]+", " ")
+    text = F.regexp_replace(text, r" *\n *", "\n")
+    text = F.regexp_replace(text, r"\n{3,}", "\n\n")
+
+    cleaned = posts.withColumn("body_text", F.trim(text))
 
     hashed = cleaned.withColumn(
         "content_hash", F.sha2(F.coalesce(F.col("body_html"), F.lit("")), 256)
@@ -290,34 +315,37 @@ def build_posts(spark: SparkSession) -> DataFrame:
 
 
 def merge(spark: SparkSession, staged: DataFrame, table: str, keys: list[str]) -> None:
-    """MERGE rather than overwrite.
+    """Guarded MERGE, comparing the whole row.
 
-    An unchanged re-run matches every row on (key, record_hash) with identical validity
-    and writes nothing, so Iceberg's snapshot log records real deltas. An overwrite would
-    append a full-rewrite snapshot on every run and make "nothing changed" indistinguishable
-    from "everything changed".
+    Two failure modes this navigates between, both observed:
+
+    1. An UNGUARDED merge commits an Iceberg `overwrite` snapshot rewriting every record
+       even when nothing changed, because copy-on-write MERGE rewrites each data file
+       holding a matched row regardless. The data stays correct; the snapshot log becomes
+       useless, and "nothing changed" reads identically to "everything changed".
+
+    2. A guard that compares only the SCD2 validity columns misses changes to derived
+       columns. When the HTML-to-text pipeline was rewritten, `record_hash` did not move —
+       it is computed from the source `body_html`, not the derived `body_text` — so the
+       narrow guard reported "no changes" and silver silently kept the stale text through
+       a run that looked entirely successful.
+
+    So the comparison is over every non-key column. `record_hash` still governs SCD2
+    identity; this governs whether the stored row is stale.
     """
     view = f"staged_{table.split('.')[-1]}"
     staged.createOrReplaceTempView(view)
     key_cols = [*keys, "record_hash"]
+    value_cols = [c for c in staged.columns if c not in key_cols]
+    # `<=>` is null-safe equality; plain `<>` would treat NULL != NULL as unknown and
+    # silently drop those rows from the change count.
+    differs = " OR ".join(f"NOT (t.{c} <=> s.{c})" for c in value_cols)
     existing = spark.table(table)
 
     new_rows = staged.join(existing, key_cols, "left_anti").count()
-    closed_out = (
-        staged.alias("s")
-        .join(existing.alias("t"), key_cols)
-        .filter("NOT (t.valid_to <=> s.valid_to) OR t.is_current <> s.is_current")
-        .count()
-    )
+    changed = staged.alias("s").join(existing.alias("t"), key_cols).filter(differs).count()
 
-    # Guard the MERGE rather than relying on it to no-op. Measured on the Iceberg snapshot
-    # log: an unguarded re-run over unchanged bronze still commits an `overwrite` snapshot
-    # rewriting every record, because copy-on-write MERGE rewrites each data file holding a
-    # matched row whether or not the row actually changes. The data stayed identical — so a
-    # row-level idempotency check passes either way — but the table accumulated a
-    # full-rewrite snapshot per run, which is exactly the noise that makes "nothing changed"
-    # indistinguishable from "everything changed" in the history.
-    if new_rows == 0 and closed_out == 0:
+    if new_rows == 0 and changed == 0:
         print(f"  {table}: no changes, MERGE skipped")
         return
 
@@ -326,11 +354,10 @@ def merge(spark: SparkSession, staged: DataFrame, table: str, keys: list[str]) -
         MERGE INTO {table} t
         USING {view} s
         ON {on}
-        WHEN MATCHED AND (NOT (t.valid_to <=> s.valid_to) OR t.is_current <> s.is_current)
-            THEN UPDATE SET t.valid_to = s.valid_to, t.is_current = s.is_current
+        WHEN MATCHED AND ({differs}) THEN UPDATE SET *
         WHEN NOT MATCHED THEN INSERT *
     """)
-    print(f"  {table}: {new_rows} new version(s), {closed_out} closed out")
+    print(f"  {table}: {new_rows} new row(s), {changed} updated")
 
 
 def summarize(spark: SparkSession, table: str, entity: str) -> None:
