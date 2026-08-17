@@ -144,7 +144,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  {BOLD}macro{RESET}          {macro:.2f}   (mean per-question recall)")
 
     print(
-        f"\n{BOLD}negatives{RESET}  (distance<={args.threshold}, gap>={args.min_gap} — measuring the cutoff)"
+        f"\n{BOLD}negatives{RESET}  (distance<={args.threshold}, "
+        f"gap>={args.min_gap} — measuring the cutoff)"
     )
     print(f"  clean          {clean}/{len(negatives)}")
     for s in negatives:

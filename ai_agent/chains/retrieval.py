@@ -21,6 +21,7 @@ from datetime import datetime
 
 import psycopg
 
+from ai_agent.chains.chunking import CHUNK_SCHEME
 from config.settings import Settings, load_dotenv
 from data_pipeline.extraction.http import HttpClient, TokenBucket
 
@@ -166,8 +167,8 @@ def search(
 
     # embedding_model is not optional in this filter. Mixing models in one similarity
     # search compares coordinates from unrelated spaces.
-    where = ["embedding_model = %s"]
-    params: list = [model]
+    where = ["embedding_model = %s", "chunk_scheme = %s"]
+    params: list = [model, CHUNK_SCHEME]
     if protocol:
         where.append("protocol_name = %s")
         params.append(protocol)

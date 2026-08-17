@@ -62,11 +62,15 @@ def test_every_chunk_has_a_resolvable_document_identity(conn):
     assert bad == 0
 
 
-def test_no_duplicate_chunks_for_one_model(conn):
-    """The UNIQUE constraint is what makes the loader idempotent; this proves it holds."""
+def test_no_duplicate_chunks_for_one_model_and_scheme(conn):
+    """The UNIQUE constraint is what makes the loader idempotent; this proves it holds.
+
+    `chunk_scheme` belongs in the grouping for the same reason it belongs in the constraint:
+    the same source text chunked two ways is two legitimate rows, not a duplicate. Omitting
+    it here reported all 1,655 v1 rows as duplicates the moment v2 landed."""
     dupes = conn.execute(
-        "SELECT count(*) FROM (SELECT source_content_hash, chunk_index, embedding_model "
-        "FROM document_embeddings GROUP BY 1,2,3 HAVING count(*) > 1) x"
+        "SELECT count(*) FROM (SELECT source_content_hash, chunk_index, embedding_model, "
+        "chunk_scheme FROM document_embeddings GROUP BY 1,2,3,4 HAVING count(*) > 1) x"
     ).fetchone()[0]
     assert dupes == 0
 
@@ -82,15 +86,29 @@ def test_stored_vectors_are_unit_normalised(conn):
     assert worst is None or worst < 0.01, f"worst L2 norm deviation {worst}"
 
 
-def test_hnsw_index_exists_and_is_used(conn):
-    """Without the index every query is a sequential scan — correct, and unusably slow
-    once the corpus grows."""
+def test_hnsw_index_can_serve_the_ordering(conn):
+    """Without a usable index every query is a sequential scan — correct, and unusably slow
+    once the corpus grows.
+
+    Asserted with `enable_seqscan = off` rather than against the planner's free choice. At
+    corpus scale the planner rightly prefers a seq scan: HNSW costs ~1,888 to start against
+    ~594 to sort 3,310 rows outright. The unforced version passed at 1,655 rows and failed
+    at 3,310 without anything being wrong — it was measuring table size, not the index.
+
+    The teeth are in the *shape* of the forced plan: a wrong operator class (`vector_l2_ops`
+    under a `<=>` query) leaves the index unusable for the ordering, and the plan falls back
+    to a Sort node. That is the failure worth catching, and this still catches it."""
+    conn.execute("SET enable_seqscan = off")
     plan = conn.execute(
         "EXPLAIN SELECT chunk_id FROM document_embeddings "
         "ORDER BY embedding <=> (SELECT embedding FROM document_embeddings LIMIT 1) LIMIT 5"
     ).fetchall()
+    conn.execute("SET enable_seqscan = on")
     text = " ".join(r[0] for r in plan)
-    assert "document_embeddings_hnsw_idx" in text, f"HNSW index not used:\n{text}"
+    assert "document_embeddings_hnsw_idx" in text, f"HNSW index not usable:\n{text}"
+    assert "Sort Key: ((document_embeddings.embedding <=>" not in text, (
+        f"index present but the ordering fell back to a sort:\n{text}"
+    )
 
 
 def test_validity_windows_came_through_from_silver(conn):
@@ -128,9 +146,14 @@ def test_search_finds_the_document_a_question_is_about():
 @pytest.mark.live
 def test_threshold_rejects_distant_matches():
     """Vector search always returns k results. Without a cutoff there is no way to say
-    'nothing here is close enough', which is what the negative questions measure."""
-    loose = search("What is the current price of UNI?", k=5, max_distance=None)
-    tight = search("What is the current price of UNI?", k=5, max_distance=0.30)
+    'nothing here is close enough', which is what the negative questions measure.
+
+    Both cutoffs are disabled on the loose call, not just `max_distance`. Leaving `min_gap`
+    at its default meant the control arm was also filtered, and the test passed only while
+    this question's distance profile happened not to look flat — under chunk scheme v2 it
+    does look flat (correctly: it is a negative), and the control returned nothing."""
+    loose = search("What is the current price of UNI?", k=5, max_distance=None, min_gap=None)
+    tight = search("What is the current price of UNI?", k=5, max_distance=0.30, min_gap=None)
     assert loose, "expected the unfiltered search to return something"
     assert len(tight) < len(loose)
 
@@ -156,3 +179,56 @@ def test_point_in_time_search_excludes_unobserved_rows():
 
     past = datetime(2020, 1, 1, tzinfo=UTC)
     assert search("governance", k=5, max_distance=None, as_of=past) == []
+
+
+# --------------------------------------------------------------------------
+# Chunk scheme — the A/B mechanism
+# --------------------------------------------------------------------------
+
+
+def test_both_chunk_schemes_are_stored(conn):
+    """Keeping v1 alongside v2 makes reverting a one-constant change rather than a
+    re-embed. The vectors are already paid for; discarding them buys nothing."""
+    schemes = dict(
+        conn.execute("SELECT chunk_scheme, count(*) FROM document_embeddings GROUP BY 1").fetchall()
+    )
+    assert len(schemes) >= 2, f"expected v1 and v2 to coexist, found {schemes}"
+    assert all(n > 1000 for n in schemes.values())
+
+
+def test_uniqueness_includes_the_chunk_scheme(conn):
+    """Without the scheme in the key, changing chunking logic leaves the loader's skip
+    check unmoved — it reports 'already embedded' and silently serves stale vectors. The
+    same trap that let a stale Phase 3 derivation survive a successful-looking rebuild."""
+    cols = conn.execute("""
+        SELECT a.attname FROM pg_constraint c
+        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY(c.conkey)
+        WHERE c.conname = 'document_embeddings_chunk_unique'
+    """).fetchall()
+    assert "chunk_scheme" in {r[0] for r in cols}
+
+
+def test_v2_chunks_carry_the_protocol_label(conn):
+    """The whole point of v2: `protocol_name` is a column, and a column is invisible to a
+    vector. The label has to be in the text."""
+    bad = conn.execute("""
+        SELECT count(*) FROM document_embeddings
+        WHERE chunk_scheme = 'v2'
+          AND text_chunk NOT LIKE 'Aave —%' AND text_chunk NOT LIKE 'Uniswap —%'
+          AND text_chunk NOT LIKE 'Arbitrum —%' AND text_chunk NOT LIKE 'Optimism —%'
+          AND text_chunk NOT LIKE 'ENS —%'
+    """).fetchone()[0]
+    assert bad == 0, f"{bad} v2 chunks have no protocol label"
+
+
+@pytest.mark.live
+def test_search_returns_only_the_active_scheme():
+    """Mixing schemes in one similarity search is the same error as mixing models —
+    different text produces different vectors, and ranking across both is meaningless."""
+    from ai_agent.chains.chunking import CHUNK_SCHEME
+
+    results = search("oracle deprecation", k=5, max_distance=None, min_gap=None)
+    assert results
+    prefixes = {"v2": ("Aave —", "Uniswap —", "Arbitrum —", "Optimism —", "ENS —")}
+    if CHUNK_SCHEME == "v2":
+        assert all(r.text.startswith(prefixes["v2"]) for r in results)

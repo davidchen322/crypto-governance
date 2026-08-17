@@ -26,6 +26,16 @@ import tiktoken
 # are all denominated in tokens, and chars/4 drifts badly on code blocks and addresses.
 ENCODING = tiktoken.get_encoding("cl100k_base")
 
+# Bumping this re-embeds the corpus. It exists because the loader's idempotency check is
+# keyed on the SOURCE content hash, which does not move when the chunking logic changes —
+# exactly the trap that let a stale Phase 3 derivation survive a "successful" rebuild. With
+# a scheme in the key, changing how text is chunked invalidates the old vectors explicitly
+# instead of silently reusing them.
+#
+#   v1  title + heading + body
+#   v2  protocol label prepended, so the embedding can see which DAO a chunk belongs to
+CHUNK_SCHEME = "v2"
+
 TARGET_TOKENS = 400
 OVERLAP_TOKENS = 80
 # Deliberately low. A short-but-real section ("## Motivation\n\nThese feeds are high
@@ -149,13 +159,25 @@ def chunk_document(
     return chunks
 
 
-def chunk_proposal(title: str | None, body: str | None) -> list[Chunk]:
-    """Proposals lead with their title in every chunk.
+def chunk_proposal(title: str | None, body: str | None, protocol: str | None = None) -> list[Chunk]:
+    """Proposals lead with protocol and title in every chunk.
 
     A body chunk about fee parameters is far more findable when the text itself says which
-    proposal it belongs to — the embedding has no access to the row's other columns.
+    proposal — and which DAO — it belongs to. The embedding has no access to the row's other
+    columns, so `protocol_name` sitting in Postgres does nothing for similarity.
+
+    Measured motivation: an Aave question about "V4" retrieved Uniswap's "Four for V4" as
+    its top two hits, because "V4" is shared vocabulary and nothing in the text
+    disambiguated it.
+
+    This is deliberately a soft signal rather than a hard `WHERE protocol_name = ...`
+    filter. A filter that guesses wrong excludes the right answer outright, and it breaks
+    cross-protocol questions ("which DAOs pay delegates?") that legitimately span all five.
+    A prefix only nudges the ranking.
     """
     title = (title or "").strip()
+    if protocol:
+        title = f"{protocol} — {title}" if title else protocol
     body = (body or "").strip()
     if not body:
         return chunk_document(title) if title else []
@@ -174,6 +196,8 @@ def chunk_proposal(title: str | None, body: str | None) -> list[Chunk]:
     ]
 
 
-def chunk_forum_post(topic_title: str | None, body_text: str | None) -> list[Chunk]:
-    """Forum posts carry their thread title for the same reason."""
-    return chunk_proposal(topic_title, body_text)
+def chunk_forum_post(
+    topic_title: str | None, body_text: str | None, protocol: str | None = None
+) -> list[Chunk]:
+    """Forum posts carry their thread title and protocol for the same reason."""
+    return chunk_proposal(topic_title, body_text, protocol)

@@ -19,14 +19,28 @@ class Protocol:
     snapshot_space: str
     discourse_host: str
     note: str = ""
+    # How the protocol is written in prose. Chunk text carries this so the embedding can
+    # see which protocol a chunk belongs to — `protocol_name` is a column, and a column is
+    # invisible to a vector.
+    display: str = ""
+
+    @property
+    def label(self) -> str:
+        return self.display or self.name.title()
 
 
 PROTOCOLS: tuple[Protocol, ...] = (
-    Protocol("aave", "aavedao.eth", "governance.aave.com", "~970 proposals"),
-    Protocol("uniswap", "uniswapgovernance.eth", "gov.uniswap.org", "~197 proposals"),
-    Protocol("arbitrum", "arbitrumfoundation.eth", "forum.arbitrum.foundation", "~415 proposals"),
-    Protocol("optimism", "opcollective.eth", "gov.optimism.io", "~93 proposals"),
-    Protocol("ens", "ens.eth", "discuss.ens.domains", "~98 proposals"),
+    Protocol("aave", "aavedao.eth", "governance.aave.com", "~970 proposals", "Aave"),
+    Protocol("uniswap", "uniswapgovernance.eth", "gov.uniswap.org", "~197 proposals", "Uniswap"),
+    Protocol(
+        "arbitrum",
+        "arbitrumfoundation.eth",
+        "forum.arbitrum.foundation",
+        "~415 proposals",
+        "Arbitrum",
+    ),
+    Protocol("optimism", "opcollective.eth", "gov.optimism.io", "~93 proposals", "Optimism"),
+    Protocol("ens", "ens.eth", "discuss.ens.domains", "~98 proposals", "ENS"),
 )
 
 BY_NAME = {p.name: p for p in PROTOCOLS}

@@ -1,21 +1,22 @@
 # Phase 4 — Embeddings, Retrieval and the Baseline
 
-**Status:** Baseline measured, two of three findings fixed · **Date:** 16 Aug 2026
+**Status:** Baseline measured, all three findings addressed · **Date:** 17 Aug 2026
 
 ## Current numbers
 
-| Metric | First baseline | After diversity + gap threshold |
-| --- | --- | --- |
-| micro recall@5 | 0.67 | **0.78** |
-| macro recall@5 | 0.82 | **0.88** |
-| lookup | 0.88 | **0.96** |
-| thematic | 0.50 | **0.60** |
-| cross_source | 1.00 | 1.00 |
-| negatives clean | 0/5 | **5/5** |
+| Metric | First baseline | After diversity + gap threshold | After chunk scheme v2 |
+| --- | --- | --- | --- |
+| micro recall@5 | 0.67 | 0.78 | **0.81** |
+| macro recall@5 | 0.82 | 0.88 | **0.89** |
+| lookup | 0.88 | **0.96** | 0.92 |
+| thematic | 0.50 | 0.60 | **0.70** |
+| cross_source | 1.00 | 1.00 | 1.00 |
+| negatives clean | 0/5 | 5/5 | 5/5 |
 
-Both fixes cost nothing — no re-embedding, no extra tokens handed to the analyst. Details
-in *Fixes applied* below. The original baseline and its analysis follow, kept because the
-reasoning is what makes the numbers meaningful.
+The first two fixes cost nothing. The third cost $0.055 and is a **mixed result, not a
+clean win** — it is kept on the strength of micro, macro and thematic, against a real
+regression in lookup. That trade is argued in *Chunk scheme v2* below, and it is reversible
+with one constant because both schemes are still in the table.
 
 ---
 
@@ -237,7 +238,9 @@ In priority order, all still Phase 4:
 4. **Protocol filtering.** Cheap to try: put the protocol name in the chunk text and
    re-embed (~$0.055) to see whether it fixes the V4 bleed.
 
-Then Phase 5 — the LangGraph router, which consumes `search()` as it now stands.
+Then Phase 5 — the LangGraph router, which consumes `search()` as it now stands, and which
+is where protocol filtering belongs (see *Chunk scheme v2* below for why text alone did not
+solve it).
 
 Two things deliberately *not* being done yet: chunk-size tuning (there is no evidence chunk
 size is the problem, and changing it re-embeds everything), and raising k as a fix for
@@ -294,12 +297,116 @@ Worth noting how this surfaced: the sweep predicted 5/5, the measurement said 3/
 disagreement was the bug. Without a recorded prediction there would have been nothing to
 disagree with.
 
-### Still outstanding
+---
 
-**Protocol bleed** is unfixed. Filters help when applied (`protocol=aave, source=proposal`
-takes the failing question from 0/3 to 2/3) but knowing to apply them requires parsing the
-question, which is the Phase 5 router's job. The Phase-4-only alternative — putting the
-protocol name into the chunk text and re-embedding for ~$0.055 — remains untested.
+## Chunk scheme v2 — the protocol label in the text
 
-**Thematic recall at 0.60** is the weakest number. Diversity helped; the remaining misses
-are cross-protocol questions where vocabulary differs between DAOs.
+Finding 3 offered two fixes for protocol bleed. A hard `WHERE protocol_name = ...` filter is
+free but excludes the right answer outright when the guess is wrong, and breaks the
+cross-protocol questions that legitimately span all five DAOs. The soft alternative — put
+the label in the text the model actually sees — was chosen deliberately for that reason.
+
+`chunk_proposal()` now prepends the protocol's prose label to the title:
+
+```
+v1   [ARFC] Oracle Deprecation for Long-tail Assets\n\nSummary\n\nLlamaRisk prop...
+v2   Aave — [ARFC] Oracle Deprecation for Long-tail Assets\n\nSummary\n\nLlamaRisk prop...
+```
+
+`protocol_name` was always a column, and a column is invisible to a vector. This is the
+smallest change that puts the fact into the embedding space.
+
+### What it actually did
+
+Three questions moved. That is the whole effect — the other 21 were unchanged.
+
+| Question | Kind | v1 | v2 |
+| --- | --- | --- | --- |
+| `theme-protocol-fee-expansion` | thematic | 0.75 | **1.00** |
+| `theme-delegate-incentives` | thematic | 0.50 | **0.75** |
+| `aave-v4-deployment-targets` | lookup | 0.67 | **0.33** |
+
+The gains landed exactly where the change was aimed: cross-protocol thematic questions,
+where naming the DAO in every chunk gives a question like *"which DAOs pay delegates?"*
+something to match against. Thematic was the weakest category and it improved most.
+
+**The regression is the interesting part.** `aave-v4-deployment-targets` is the question
+that motivated the change, and the change made it worse:
+
+```
+0.332  uniswap   Uniswap — [RFC] Four for V4 ...          <- still the top hit
+0.351  aave      Aave — [ARFC] Aave V4 Activation on Ethereum Mainnet
+0.371  aave      Aave — [ARFC] Deploy Aave V4 on Avalanche
+0.374  uniswap   Uniswap — [Temp Check] - Four for V4 ...
+0.380  aave      Aave — AL Development Update | July 2026
+```
+
+Uniswap's *Four for V4* is **still ranked first for an Aave question**, with the word
+"Uniswap" sitting in its own chunk text. The hypothesis was that the label would break the
+"V4" collision; measured, it does not. Both Uniswap chunks now carry a token the query
+does not ask for, and both still outrank two of the three expected Aave proposals — one of
+which lost its slot to an Aave *forum* post that gained from the same prefix.
+
+So the honest reading is: the label is a useful **topical** signal for questions that range
+across DAOs, and a weak **disambiguating** signal for questions that name one. Those are
+different jobs, and only the first one worked.
+
+### Why it is kept anyway
+
+Micro +0.03, macro +0.01, thematic +0.10, against lookup −0.04 on a single question.
+Thematic is the weakest category and the one with the most room; lookup at 0.92 is still
+the strongest of the three. Negatives stayed clean at 5/5, so the extra shared vocabulary
+did not loosen the cutoff.
+
+It is worth being clear that this is a judgement call on a 24-question eval set, and a
+one-question swing is inside the noise that set can resolve. The defensible part is not the
++0.03 — it is that **the decision is reversible and the evidence is recorded**. Both schemes
+sit in `document_embeddings`; reverting is `CHUNK_SCHEME = "v1"` and costs nothing, because
+the v1 vectors were never deleted.
+
+### Protocol bleed is still the right job for the router
+
+The measured result is that text alone does not fix it. What does work is the filter:
+`protocol=aave, source=proposal` takes the same question from 0/3 to 2/3. The reason not to
+apply it unconditionally is unchanged — a wrong guess excludes the answer entirely — which
+makes it a decision that needs to see the parsed question, i.e. the Phase 5 router. v2 makes
+that router's job easier without pretending to replace it.
+
+---
+
+## Bugs the re-embed exposed in the tests
+
+Doubling the table from 1,655 to 3,310 rows broke three integration tests. All three were
+tests that had been passing for the wrong reason.
+
+**`test_no_duplicate_chunks_for_one_model`** grouped on `(source_content_hash, chunk_index,
+embedding_model)` and reported all 1,655 v1 rows as duplicates. The grouping was missing
+`chunk_scheme` for the same reason the UNIQUE constraint originally was: the same source
+text chunked two ways is two legitimate rows.
+
+**`test_hnsw_index_exists_and_is_used`** asserted the planner *chose* the HNSW index. At
+3,310 rows it correctly stops choosing it — HNSW costs ~1,888 to start against ~594 to sort
+the whole table. Nothing was wrong; the test was measuring table size. It now forces
+`enable_seqscan = off` and asserts the *shape* of the plan, which still catches the failure
+worth catching (a wrong operator class leaves the index unusable and falls back to a Sort).
+
+**`test_threshold_rejects_distant_matches`** passed `max_distance=None` for its control arm
+but left `min_gap` at its default, so the "unfiltered" search was still filtered. It passed
+only while that question's distance profile happened not to look flat. Under v2 it does look
+flat — correctly, since it is a negative — and the control returned nothing. Now both
+cutoffs are disabled explicitly.
+
+None of these were caused by v2. They were latent, and a change in corpus size was enough to
+surface them — the same pattern as the `min_gap` window bug: the test agreed with the code
+by coincidence, and it took new data to notice.
+
+---
+
+## Tests added for the scheme mechanism
+
+| Test | What it pins |
+| --- | --- |
+| `test_both_chunk_schemes_are_stored` | rollback stays a one-constant change; the paid-for v1 vectors are not discarded |
+| `test_uniqueness_includes_the_chunk_scheme` | without it the loader's skip check reports "already embedded" and serves stale vectors |
+| `test_v2_chunks_carry_the_protocol_label` | the label is in the text, not just the column |
+| `test_search_returns_only_the_active_scheme` | ranking across two schemes compares vectors built from different text, which is meaningless |

@@ -23,8 +23,9 @@ from dataclasses import dataclass
 
 import psycopg
 
-from ai_agent.chains.chunking import chunk_forum_post, chunk_proposal
+from ai_agent.chains.chunking import CHUNK_SCHEME, chunk_forum_post, chunk_proposal
 from ai_agent.chains.trino_client import query as trino_query
+from config.protocols import BY_NAME
 from config.settings import Settings, load_dotenv
 from data_pipeline.extraction.http import HttpClient, TokenBucket
 
@@ -64,7 +65,8 @@ def load_silver_chunks() -> list[PendingChunk]:
         WHERE is_current
     """)
     for row in proposals:
-        for chunk in chunk_proposal(row["title"], row["body"]):
+        label = BY_NAME[row["protocol_name"]].label
+        for chunk in chunk_proposal(row["title"], row["body"], protocol=label):
             pending.append(
                 PendingChunk(
                     source="proposal",
@@ -90,7 +92,8 @@ def load_silver_chunks() -> list[PendingChunk]:
         WHERE is_current
     """)
     for row in posts:
-        for chunk in chunk_forum_post(row["topic_title"], row["body_text"]):
+        label = BY_NAME[row["protocol_name"]].label
+        for chunk in chunk_forum_post(row["topic_title"], row["body_text"], protocol=label):
             pending.append(
                 PendingChunk(
                     source="forum",
@@ -121,8 +124,8 @@ def filter_already_embedded(
         (h, i)
         for h, i in conn.execute(
             "SELECT source_content_hash, chunk_index FROM document_embeddings "
-            "WHERE embedding_model = %s",
-            (model,),
+            "WHERE embedding_model = %s AND chunk_scheme = %s",
+            (model, CHUNK_SCHEME),
         ).fetchall()
     }
     return [c for c in pending if (c.source_content_hash, c.chunk_index) not in existing]
@@ -161,9 +164,9 @@ def insert(conn: psycopg.Connection, chunks: list[PendingChunk], vectors, model:
             """
             INSERT INTO document_embeddings
                 (source, document_id, protocol_name, source_content_hash, chunk_type,
-                 chunk_index, heading, text_chunk, token_count, embedding_model, embedding,
-                 valid_from, valid_to)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                 chunk_index, heading, text_chunk, token_count, embedding_model,
+                 chunk_scheme, embedding, valid_from, valid_to)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             ON CONFLICT ON CONSTRAINT document_embeddings_chunk_unique DO NOTHING
             """,
             [
@@ -178,6 +181,7 @@ def insert(conn: psycopg.Connection, chunks: list[PendingChunk], vectors, model:
                     c.text,
                     c.tokens,
                     model,
+                    CHUNK_SCHEME,
                     str(vec),
                     c.valid_from,
                     c.valid_to or None,

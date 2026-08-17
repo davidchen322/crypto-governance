@@ -57,6 +57,11 @@ CREATE TABLE IF NOT EXISTS document_embeddings (
     token_count          INT,
 
     embedding_model      VARCHAR(100) NOT NULL,
+    -- How the text was chunked. Part of the identity because the loader's skip check is
+    -- keyed on the SOURCE hash, which does not move when chunking logic changes — the same
+    -- trap that let a stale Phase 3 derivation survive a "successful" rebuild. Two schemes
+    -- coexist so a change can be A/B tested and reverted without re-embedding.
+    chunk_scheme         VARCHAR(20)  NOT NULL DEFAULT 'v1',
     embedding            VECTOR(1536) NOT NULL,
 
     -- Carried from silver so retrieval can be asked historical questions without
@@ -69,13 +74,13 @@ CREATE TABLE IF NOT EXISTS document_embeddings (
     -- Makes the loader idempotent: a re-run resolves to rows that already exist, so
     -- unchanged text is never paid for twice.
     CONSTRAINT document_embeddings_chunk_unique
-        UNIQUE (source_content_hash, chunk_index, embedding_model)
+        UNIQUE (source_content_hash, chunk_index, embedding_model, chunk_scheme)
 );
 
 -- Vectors from different models share no coordinate space, so every similarity query
 -- must filter on embedding_model. This index supports that filter.
 CREATE INDEX IF NOT EXISTS document_embeddings_lookup_idx
-    ON document_embeddings (protocol_name, source, document_id, embedding_model);
+    ON document_embeddings (protocol_name, source, document_id, embedding_model, chunk_scheme);
 
 CREATE INDEX IF NOT EXISTS document_embeddings_hnsw_idx
     ON document_embeddings USING hnsw (embedding vector_cosine_ops);
