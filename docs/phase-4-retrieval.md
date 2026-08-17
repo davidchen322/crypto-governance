@@ -404,102 +404,15 @@ by coincidence, and it took new data to notice.
 
 ## The `gov` CLI and the Phase 4 exit demo
 
-The plan's Phase 4 demo is:
+Building the demo the plan specifies (`gov search "..."`) surfaced three findings and one
+check that mattered more than any of them — including confirmation that the relevance
+cutoffs, fitted on v1, are **still valid under v2**: the re-embed pulled every positive
+category closer (lookup −0.032, thematic −0.028, cross_source −0.018) while leaving the
+negatives unmoved (+0.000).
 
-```bash
-gov search "delegate voting power concentration"
-```
-
-> returns ranked chunks with protocol, proposal and date
-
-That command did not exist — `search()` was a Python function with no entry point. It does
-now (`ai_agent/cli.py`, installed as `gov`), and it needs saying that **running it surfaced
-two things worth more than the demo itself**.
-
-### The date the demo asks for was not in the database
-
-`document_embeddings` had `valid_from`, and it would have been easy to render that as
-"date". It is the wrong column, and wrong in a way that looks right:
-
-```
-min(valid_from)  2026-08-14
-max(valid_from)  2026-08-14
-```
-
-`valid_from` is when the *pipeline observed* the row. This corpus was harvested in one pass,
-so every chunk shares it — a listing built on it would print `2026-08-14` on every result,
-look entirely plausible, and be useless. The governance dates (`proposal_created`,
-`post_created_at`) were sitting in silver and had never been carried across.
-
-Fixed by adding `title` and `document_date` as **citation metadata** — never used for
-ranking — plus `scripts/backfill_citation_metadata.py`, which filled all 3,310 existing rows
-from silver. **No re-embedding**: the vectors are untouched, so this cost nothing. The
-backfill keys on `source_content_hash`, so a chunk gets the metadata of the version it was
-actually embedded from rather than today's.
-
-Two tests pin the trap: `test_document_date_is_not_the_harvest_date` asserts the governance
-dates span >50 distinct days while `valid_from` spans ≤2, and the CLI-level equivalent
-asserts the renderer reads the right field.
-
-Also caught in passing: `document_embeddings_lookup_idx` was still missing `chunk_scheme`
-in the live database. `CREATE INDEX IF NOT EXISTS` had silently skipped the updated
-definition, because an index of that *name* already existed — the statement does not compare
-definitions. Rebuilt.
-
-### The demo query returns nothing, and that is a real finding
-
-```
-$ gov search "delegate voting power concentration"
-"delegate voting power concentration"  —  no sufficiently relevant chunks
-```
-
-Both cutoffs reject it: best distance 0.551 against a 0.48 ceiling, gap 0.024 against a
-0.025 floor. Under v1 it was also rejected (0.530 / 0.038), so this is **not** a v2
-regression — the demo query has never worked, because it was written into the plan before
-the corpus existed.
-
-Rephrasing does not rescue it. Three of four natural phrasings still reject:
-
-| Phrasing | best | gap | |
-| --- | --- | --- | --- |
-| `delegate voting power concentration` | 0.551 | 0.024 | reject |
-| *Is voting power concentrated among a few delegates?* | 0.551 | 0.030 | reject |
-| *Which proposals address concentration of delegate voting power?* | 0.539 | 0.012 | reject |
-| *How do DAOs try to reduce reliance on a small number of large delegates?* | 0.442 | 0.035 | **accept** |
-
-The diagnosis is about the corpus, not the phrasing. Its best hit at 0.551 is **further away
-than every deliberately-unanswerable negative in the eval set** (0.432–0.529). The corpus has
-material *adjacent* to the topic — ENS Delegation Incentives, Uniswap Treasury Delegation,
-Arbitrum DVP Quorum — but no document actually *about* concentration of delegate voting
-power. The threshold is doing its job: it is declining to answer a question the corpus can
-only gesture at, which is the correct behaviour for a governance risk tool.
-
-So the demo command is built and correct, and the query in the plan is a poor showcase. The
-plan has been updated to a query the corpus supports, with the original retained as a worked
-example of the threshold refusing to bluff.
-
-### The check that mattered more: were the thresholds still calibrated?
-
-`DEFAULT_MAX_DISTANCE` and `DEFAULT_MIN_GAP` were fitted on **v1** embeddings and never
-refitted after the v2 re-embed. That is a genuine hazard — the constants could have been
-silently miscalibrated for the scheme now in use. The v1 vectors are still in the table, so
-this is directly measurable across all 24 eval questions:
-
-| Question kind | best v1 | best v2 | shift | gap v1 | gap v2 |
-| --- | --- | --- | --- | --- | --- |
-| lookup | 0.319 | 0.286 | **−0.032** | 0.077 | 0.077 |
-| thematic | 0.374 | 0.346 | **−0.028** | 0.042 | 0.046 |
-| cross_source | 0.307 | 0.289 | **−0.018** | 0.050 | 0.063 |
-| negative | 0.472 | 0.472 | **+0.000** | 0.026 | 0.022 |
-
-v2 pulled every positive category *closer* while leaving the negatives exactly where they
-were. The separation improved rather than drifting, and both schemes reject the same single
-positive (`theme-delegate-incentives`). **The fitted constants remain valid under v2** — and
-this is now a recorded measurement rather than an assumption.
-
-It is worth noting this is a second, independent argument for keeping v2, and a better one
-than the +0.03 micro recall: the change moved answerable questions toward the corpus without
-moving unanswerable ones.
+That is a better argument for keeping v2 than the mixed recall result above, and it is
+written up in full, with reproduction steps, in
+**[phase-4-exit-demo.md](phase-4-exit-demo.md)**.
 
 ---
 
