@@ -1,0 +1,531 @@
+<title>Phase 4, Explained</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground:      #F7F8FA;
+    --surface:     #FFFFFF;
+    --surface-alt: #F0F3F6;
+    --ink:         #16202B;
+    --ink-mid:     #3D4C5A;
+    --ink-muted:   #64727F;
+    --rule:        #DDE3E9;
+    --rule-strong: #C3CDD6;
+    --accent:      #A65A11;
+    --accent-soft: #F2E3D2;
+    --good:        #0F766E;
+    --good-soft:   #D7E9E6;
+    --bad:         #9F3A4A;
+    --bad-soft:    #F0DCDF;
+    --shadow:      0 1px 2px rgba(22,32,43,.05), 0 8px 24px -16px rgba(22,32,43,.28);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0E151C;
+      --surface:     #141D26;
+      --surface-alt: #1A2531;
+      --ink:         #E5EAEF;
+      --ink-mid:     #B6C2CD;
+      --ink-muted:   #8A99A7;
+      --rule:        #253442;
+      --rule-strong: #35485A;
+      --accent:      #E8A33D;
+      --accent-soft: #3A2C17;
+      --good:        #4FB3A5;
+      --good-soft:   #16302E;
+      --bad:         #D97A8A;
+      --bad-soft:    #341E23;
+      --shadow:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #0E151C;
+    --surface:     #141D26;
+    --surface-alt: #1A2531;
+    --ink:         #E5EAEF;
+    --ink-mid:     #B6C2CD;
+    --ink-muted:   #8A99A7;
+    --rule:        #253442;
+    --rule-strong: #35485A;
+    --accent:      #E8A33D;
+    --accent-soft: #3A2C17;
+    --good:        #4FB3A5;
+    --good-soft:   #16302E;
+    --bad:         #D97A8A;
+    --bad-soft:    #341E23;
+    --shadow:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    font-size: 1.0625rem;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 1.5rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 46rem; margin: 0 auto; }
+  .wide { max-width: 62rem; margin-left: auto; margin-right: auto; }
+
+  h1, h2, h3, .eyebrow, .lede, th, .label, .num, .chip, .kicker {
+    font-family: Archivo, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .eyebrow {
+    font-size: .75rem; font-weight: 600; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 1.25rem;
+  }
+
+  h1 {
+    font-size: clamp(2.4rem, 6vw, 3.6rem); font-weight: 700;
+    letter-spacing: -.032em; line-height: 1.02;
+    text-wrap: balance; margin: 0 0 1.25rem;
+  }
+
+  .lede {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 1.25rem; line-height: 1.5; color: var(--ink-mid);
+    margin: 0 0 2rem; text-wrap: pretty;
+  }
+
+  .meta {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: .78rem; color: var(--ink-muted);
+    display: flex; flex-wrap: wrap; gap: .5rem 1.5rem;
+    padding-top: 1.5rem; border-top: 1px solid var(--rule);
+  }
+
+  header.page { padding: 4.5rem 0 3.5rem; }
+
+  h2 {
+    font-size: 1.75rem; font-weight: 600; letter-spacing: -.02em;
+    line-height: 1.15; text-wrap: balance;
+    margin: 4rem 0 1rem; padding-top: 2rem;
+    border-top: 1px solid var(--rule);
+  }
+  h2:first-of-type { margin-top: 2rem; }
+
+  h3 {
+    font-size: 1.125rem; font-weight: 600; letter-spacing: -.008em;
+    margin: 2.5rem 0 .6rem; color: var(--ink);
+  }
+
+  p { margin: 0 0 1.1rem; text-wrap: pretty; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px;
+  }
+  strong { font-weight: 600; }
+
+  code, .mono, .num {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  p code, li code, td code, th code {
+    font-size: .875em; background: var(--surface-alt);
+    padding: .12em .34em; border-radius: 3px;
+    border: 1px solid var(--rule);
+  }
+
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .5rem; }
+
+  /* ---------- pipeline ---------- */
+  .pipeline { list-style: none; padding: 0; margin: 1.75rem 0 0;
+              display: grid; gap: 1px; background: var(--rule);
+              border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+  .pipeline li { margin: 0; background: var(--surface); padding: 1.1rem 1.25rem;
+                 display: grid; grid-template-columns: 2rem 1fr; gap: .25rem 1rem; align-items: baseline; }
+  .pipeline .num { color: var(--accent); font-size: .82rem; font-weight: 600; }
+  .pipeline .label { font-size: .95rem; font-weight: 600; letter-spacing: -.005em; }
+  .pipeline .desc { grid-column: 2; font-size: .95rem; color: var(--ink-mid); line-height: 1.55; }
+
+  /* ---------- distance scale ---------- */
+  .scale-panel {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.75rem 1.5rem 1.25rem; margin: 2rem 0; box-shadow: var(--shadow);
+  }
+  .scale-panel .kicker {
+    font-size: .7rem; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--ink-muted); margin: 0 0 1.5rem; font-weight: 600;
+  }
+  .track { position: relative; height: 132px; margin: 0 0 .5rem; }
+  .band {
+    position: absolute; height: 30px; border-radius: 3px;
+    display: flex; align-items: center; padding: 0 .6rem;
+    font-family: "IBM Plex Mono", monospace; font-size: .72rem; font-weight: 500;
+    white-space: nowrap; overflow: hidden;
+  }
+  .band-good { top: 6px;  background: var(--good-soft); color: var(--good);
+               border: 1px solid var(--good); }
+  .band-bad  { top: 48px; background: var(--bad-soft);  color: var(--bad);
+               border: 1px solid var(--bad); }
+  .overlap {
+    position: absolute; top: 0; height: 84px;
+    background: repeating-linear-gradient(45deg, transparent, transparent 4px,
+                var(--rule-strong) 4px, var(--rule-strong) 5px);
+    border-left: 1px dashed var(--ink-muted); border-right: 1px dashed var(--ink-muted);
+    pointer-events: none;
+  }
+  .overlap-tag {
+    position: absolute; top: 90px; font-family: "IBM Plex Mono", monospace;
+    font-size: .68rem; color: var(--ink-muted); transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .marker { position: absolute; top: 0; bottom: 32px; width: 0; border-left: 2px solid var(--accent); }
+  .marker span {
+    position: absolute; top: -1.45rem; left: 50%; transform: translateX(-50%);
+    font-family: "IBM Plex Mono", monospace; font-size: .68rem; font-weight: 600;
+    color: var(--accent); white-space: nowrap;
+  }
+  .axis { position: relative; height: 1.5rem; border-top: 1px solid var(--rule-strong); }
+  .tick {
+    position: absolute; top: .3rem; transform: translateX(-50%);
+    font-family: "IBM Plex Mono", monospace; font-size: .68rem; color: var(--ink-muted);
+  }
+  .scale-note { font-size: .9rem; color: var(--ink-mid); margin: 1rem 0 0; line-height: 1.55; }
+
+  /* ---------- slots diagram ---------- */
+  .slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: .4rem; margin: 1.25rem 0 .6rem; }
+  .slot {
+    border-radius: 4px; padding: .7rem .5rem; text-align: center;
+    font-family: "IBM Plex Mono", monospace; font-size: .7rem; line-height: 1.3;
+    border: 1px solid var(--rule-strong); background: var(--surface-alt); color: var(--ink-muted);
+  }
+  .slot.a { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .slot.b { background: var(--good-soft);   border-color: var(--good);   color: var(--good); }
+
+  /* ---------- tables ---------- */
+  .scroll { overflow-x: auto; margin: 1.5rem 0; -webkit-overflow-scrolling: touch; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; min-width: 30rem; }
+  .scroll table { min-width: 34rem; }
+  th, td { text-align: left; padding: .62rem .85rem; border-bottom: 1px solid var(--rule); }
+  th {
+    font-size: .72rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-muted); border-bottom: 1px solid var(--rule-strong); vertical-align: bottom;
+  }
+  td.n, th.n { text-align: right; font-family: "IBM Plex Mono", monospace;
+               font-variant-numeric: tabular-nums; }
+  tbody tr:last-child td { border-bottom: none; }
+  .metric-name { font-weight: 600; }
+  .up   { color: var(--good); font-weight: 600; }
+  .down { color: var(--bad);  font-weight: 600; }
+  .dim  { color: var(--ink-muted); font-style: italic; }
+
+  /* ---------- fix blocks ---------- */
+  .fix { margin: 2.5rem 0; padding-left: 1.6rem; border-left: 2px solid var(--rule-strong); }
+  .fix > .kicker {
+    font-family: "IBM Plex Mono", monospace; font-size: .72rem; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--accent);
+    margin: 0 0 .35rem; display: block;
+  }
+  .fix h3 { margin-top: 0; }
+  .fix.current { border-left-color: var(--accent); }
+
+  .problem { font-weight: 600; }
+
+  pre {
+    background: var(--surface-alt); border: 1px solid var(--rule); border-radius: 6px;
+    padding: .95rem 1.1rem; overflow-x: auto; margin: 1.25rem 0;
+    font-family: "IBM Plex Mono", monospace; font-size: .82rem; line-height: 1.6;
+    color: var(--ink-mid);
+  }
+  pre b { color: var(--accent); font-weight: 600; }
+
+  .callout {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0;
+    padding: 1.1rem 1.35rem; margin: 1.75rem 0; font-size: .97rem;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .verdict { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+             border-radius: 6px; overflow: hidden; margin: 1.75rem 0; }
+  .verdict > div { background: var(--surface); padding: 1.1rem 1.25rem; }
+  .verdict h3 { margin: 0 0 .6rem; font-size: .78rem; letter-spacing: .1em;
+                text-transform: uppercase; }
+  .verdict .ok h3   { color: var(--good); }
+  .verdict .weak h3 { color: var(--bad); }
+  .verdict ul { margin: 0; padding-left: 1.15rem; font-size: .95rem; }
+  .verdict li:last-child { margin-bottom: 0; }
+
+  footer.page {
+    margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--rule);
+    font-size: .92rem; color: var(--ink-mid);
+  }
+
+  @media (min-width: 34rem) { .verdict { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 33rem) {
+    body { padding: 0 1.1rem 4rem; font-size: 1rem; }
+    header.page { padding: 3rem 0 2.5rem; }
+    .slots { grid-template-columns: repeat(2, 1fr); }
+    .fix { padding-left: 1.1rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<header class="page wrap">
+  <p class="eyebrow">Crypto Governance Intelligence · Phase 4</p>
+  <h1>Phase 4, Explained</h1>
+  <p class="lede">What was built, what every number means, and why each fix happened — written for someone reading it cold.</p>
+  <div class="meta">
+    <span>18 Aug 2026</span>
+    <span>1,593 chunks</span>
+    <span>24 eval questions</span>
+    <span>text-embedding-3-large @ 1536d</span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <h2>What Phase 4 actually built</h2>
+  <p>Phase 3 left the governance text sitting in Iceberg tables — correct, versioned, and completely unsearchable except by SQL keyword matching. Phase 4 makes it searchable <em>by meaning</em>.</p>
+
+  <ol class="pipeline">
+    <li><span class="num">01</span><span class="label">Chunking</span><span class="desc">A 4,000-word proposal is too big to search as one unit, so it is split into ~400-token pieces along its markdown headings. Ask about “risk parameters” and you should get the Specification section, not the whole document.</span></li>
+    <li><span class="num">02</span><span class="label">Embedding</span><span class="desc">Each chunk is sent to OpenAI and comes back as 1,536 numbers — a <em>vector</em> encoding its meaning. Chunks about similar things get similar numbers. This is the part that costs money: about $0.055 for the whole corpus.</span></li>
+    <li><span class="num">03</span><span class="label">Retrieval</span><span class="desc">Your question becomes a vector the same way, and Postgres finds the chunks whose vectors sit closest to it.</span></li>
+    <li><span class="num">04</span><span class="label">The eval set</span><span class="desc">24 hand-written questions with the documents that <em>should</em> come back — so “did that change help?” has an answer that is not a shrug.</span></li>
+  </ol>
+
+  <h2>Everything rests on one number</h2>
+  <p>Closeness is measured as <strong>cosine distance</strong>: <code>0.0</code> is identical, <code>1.0</code> unrelated, <code>2.0</code> opposite. In this corpus a good match sits around <span class="mono">0.30–0.45</span>, and genuine nonsense lands at <span class="mono">0.80+</span>. Every metric below is built on that one number.</p>
+  <p>The central difficulty of the whole phase is visible in a single picture — the distances for questions the corpus <em>can</em> answer and those it <em>cannot</em> are not two separate ranges. They overlap.</p>
+</main>
+
+<div class="wide">
+  <div class="scale-panel">
+    <p class="kicker">Best-match distance, measured across 24 eval questions</p>
+    <div class="track">
+      <div class="overlap" style="left:64.2%; width:8.6%;"></div>
+      <div class="band band-good" style="left:4.2%; width:68.6%;">answerable&nbsp;&nbsp;0.215 – 0.462</div>
+      <div class="band band-bad"  style="left:64.2%; width:25.0%;">unanswerable&nbsp;&nbsp;0.431 – 0.521</div>
+      <div class="overlap-tag" style="left:68.5%;">overlap — no single cutoff separates these</div>
+      <div class="marker" style="left:61.1%;"><span>0.42 exempt</span></div>
+      <div class="marker" style="left:77.8%;"><span>0.48 ceiling</span></div>
+    </div>
+    <div class="axis">
+      <span class="tick" style="left:4.2%;">0.215</span>
+      <span class="tick" style="left:33%;">0.32</span>
+      <span class="tick" style="left:61.1%;">0.42</span>
+      <span class="tick" style="left:89.2%;">0.521</span>
+    </div>
+    <p class="scale-note">Because the ranges overlap, no distance threshold alone can tell an answerable question from an unanswerable one. That single fact drove two of the four fixes below.</p>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <h2>The 24 questions, and why they come in four kinds</h2>
+  <p>The eval set is not 24 interchangeable questions. Each kind probes a different failure.</p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Kind</th><th class="n">n</th><th>Example</th><th>What it catches</th></tr></thead>
+      <tbody>
+        <tr><td class="metric-name">lookup</td><td class="n">8</td><td><em>“Which Aave proposal deprecates Chainlink price feeds?”</em></td><td>Can it find one specific known document?</td></tr>
+        <tr><td class="metric-name">thematic</td><td class="n">5</td><td><em>“Which protocols run programs to pay delegates?”</em></td><td>Can it gather several documents across DAOs on one theme?</td></tr>
+        <tr><td class="metric-name">cross_source</td><td class="n">6</td><td><em>“What is the proposed next era of ENS DAO governance?”</em></td><td>Can it connect a proposal to its forum discussion?</td></tr>
+        <tr><td class="metric-name">negative</td><td class="n">5</td><td><em>“What is the current price of UNI?”</em></td><td>Does it know when to say <strong>nothing</strong>?</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <p>The negatives are the ones people skip, and they are the most important. Vector search <em>always</em> returns results — something is always closest — so without a deliberate cutoff, a question the corpus cannot answer still comes back with five confident-looking chunks. An analyst then writes a confident, wrong answer citing them.</p>
+  </div>
+
+  <h2>What each metric means</h2>
+
+  <h3>recall@5</h3>
+  <p>Of the documents that <em>should</em> have come back, how many appeared in the top 5? If a question expects 4 documents and 3 show up, recall is <span class="mono">3/4 = 0.75</span>.</p>
+  <p><strong>@5</strong> is the cutoff: only the top five results count. That is not arbitrary — it is roughly what fits in an analyst's attention and, later, in a language model's context.</p>
+  <p>Recall is scored at the <strong>document</strong> level, not the chunk level. If the label says “Aave's oracle proposal” and retrieval returns that proposal's <em>Motivation</em> section while the label was written against its <em>Summary</em>, that counts as a hit. It found the right document; which paragraph surfaced is not a real failure.</p>
+
+  <h3>micro vs macro — the same data, weighted two ways</h3>
+  <p>These differ only in what gets averaged, and the gap between them is informative. Take three questions:</p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Question</th><th class="n">Expects</th><th class="n">Found</th><th class="n">Recall</th></tr></thead>
+      <tbody>
+        <tr><td>Q1</td><td class="n">1</td><td class="n">1</td><td class="n">1.00</td></tr>
+        <tr><td>Q2</td><td class="n">1</td><td class="n">1</td><td class="n">1.00</td></tr>
+        <tr><td>Q3</td><td class="n">4</td><td class="n">1</td><td class="n">0.25</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ul>
+    <li><strong>micro</strong> = all documents found ÷ all expected = <span class="mono">3 ÷ 6 = 0.50</span>. Every <em>document</em> counts equally, so hard multi-document questions dominate.</li>
+    <li><strong>macro</strong> = mean of per-question recalls = <span class="mono">(1.00 + 1.00 + 0.25) ÷ 3 = 0.75</span>. Every <em>question</em> counts equally, so easy questions mask hard ones.</li>
+  </ul>
+
+  <p><strong>Macro is always the flattering number.</strong> When macro sits well above micro — as it does here, <span class="mono">0.90</span> against <span class="mono">0.83</span> — the easy single-document questions are working and the multi-document thematic ones are dragging. That is exactly the situation, and reporting only macro would hide it.</p>
+
+  <h3>negatives clean</h3>
+  <p>Of the 5 unanswerable questions, how many correctly returned <strong>nothing</strong>? <span class="mono">5/5</span> means the cutoffs held on all five. <span class="mono">0/5</span> — the first baseline — means every one returned five confident chunks about nothing.</p>
+
+  <h3>false rejections <span class="dim">(added most recently)</span></h3>
+  <p>Of the 19 answerable questions, how many survive the cutoffs? This exists because of a blind spot: recall is deliberately measured with the cutoffs <strong>off</strong>, so it grades the <em>ranking</em>. A cutoff that wrongly silences a perfectly answerable question therefore costs <em>nothing</em> on the recall line — only the 5 negatives ever exercised the thresholds at all.</p>
+  <p>Adding it caught a real bug on its first run. It is the counterweight to “negatives clean”: one measures over-answering, the other over-refusing, and tightening either degrades the other.</p>
+
+  <div class="callout">
+    <p><strong>Why the two halves use different settings.</strong> Recall is measured with cutoffs <strong>off</strong> — it grades the ranking: is the right document <em>near the top</em>? Negatives are measured with cutoffs <strong>on</strong> — they grade the cutoff: does anything survive when it shouldn't? Blend them into one score and a sloppy cutoff hides inside decent recall.</p>
+  </div>
+
+  <h2>Why the table has columns</h2>
+  <p>Each column is the same 24 questions, re-run after a change. That is the whole point of a recorded baseline — it turns “this feels better” into a number that can also move the wrong way.</p>
+</main>
+
+<div class="wide">
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th class="n">First baseline</th>
+          <th class="n">+ diversity &amp; gap</th>
+          <th class="n">+ chunk scheme v2</th>
+          <th class="n">+ curation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="metric-name">micro recall@5</td><td class="n">0.67</td><td class="n">0.78</td><td class="n">0.81</td><td class="n up">0.83</td></tr>
+        <tr><td class="metric-name">macro recall@5</td><td class="n">0.82</td><td class="n">0.88</td><td class="n">0.89</td><td class="n up">0.90</td></tr>
+        <tr><td class="metric-name">lookup</td><td class="n">0.88</td><td class="n up">0.96</td><td class="n down">0.92</td><td class="n">0.92</td></tr>
+        <tr><td class="metric-name">thematic</td><td class="n">0.50</td><td class="n">0.60</td><td class="n">0.70</td><td class="n up">0.75</td></tr>
+        <tr><td class="metric-name">cross_source</td><td class="n">1.00</td><td class="n">1.00</td><td class="n">1.00</td><td class="n">1.00</td></tr>
+        <tr><td class="metric-name">negatives clean</td><td class="n down">0/5</td><td class="n up">5/5</td><td class="n up">5/5</td><td class="n up">5/5</td></tr>
+        <tr><td class="metric-name">false rejections</td><td class="n dim">—</td><td class="n dim">—</td><td class="n dim">—</td><td class="n">1/19</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <div class="fix">
+    <span class="kicker">Column 1</span>
+    <h3>First baseline — the corpus embedded, nothing tuned</h3>
+    <p>Chunking, embedding and <code>search()</code> built as specified, then measured. micro <span class="mono">0.67</span>, thematic <span class="mono">0.50</span>, negatives <span class="mono">0/5</span>.</p>
+    <p>Those numbers are bad, and that was the point — you cannot tell improvement from change without a starting line.</p>
+  </div>
+
+  <div class="fix">
+    <span class="kicker">Column 2</span>
+    <h3>Diversity &amp; the gap threshold — two distinct problems</h3>
+
+    <p class="problem">Problem A: chunk domination.</p>
+    <p>The top 5 chunks contained, on average, only <strong>2.0 distinct documents</strong>. A long proposal splits into 30 chunks, several score well, and they crowd out everything else:</p>
+
+    <div class="slots">
+      <div class="slot a">Aave V4<br>chunk 3</div>
+      <div class="slot a">Aave V4<br>chunk 7</div>
+      <div class="slot a">Aave V4<br>chunk 12</div>
+      <div class="slot b">Four for V4<br>chunk 1</div>
+      <div class="slot b">Four for V4<br>chunk 4</div>
+    </div>
+    <p>A question expecting four documents <strong>cannot</strong> succeed here regardless of ranking quality — two documents occupy all five slots. This is why thematic sat at <span class="mono">0.50</span>.</p>
+    <p><em>Fix:</em> fetch 20 chunks, keep at most <strong>one per document</strong>, return the best 5 documents. Costs nothing, no re-embedding. thematic <span class="mono">0.50 → 0.60</span>, lookup <span class="mono">0.88 → 0.96</span>.</p>
+
+    <p class="problem">Problem B: no way to say “I don't know”.</p>
+    <p>All five negatives leaked. Tightening the distance cutoff does not work — as the diagram above shows, the ranges overlap.</p>
+    <p><em>Fix — add a second signal, the shape of the results.</em> An unanswerable question returns five <em>uniformly mediocre</em> chunks; nothing stands out. An answerable one has a clear winner. The <strong>gap</strong> — how much closer the best hit is than the average of the top 10 — captures that.</p>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Rule</th><th class="n">Negatives blocked</th><th class="n">Positives lost</th></tr></thead>
+        <tbody>
+          <tr><td>distance ≤ 0.48 alone</td><td class="n">3/5</td><td class="n">0</td></tr>
+          <tr><td>gap ≥ 0.040 alone</td><td class="n">5/5</td><td class="n down">7</td></tr>
+          <tr><td><strong>both together</strong></td><td class="n up">5/5</td><td class="n">1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Neither works alone. Together: <span class="mono">0/5 → 5/5</span>.</p>
+  </div>
+
+  <div class="fix">
+    <span class="kicker">Column 3</span>
+    <h3>Chunk scheme v2 — the embedding could not see which DAO</h3>
+    <p class="problem">Problem: protocol bleed.</p>
+    <p>An <strong>Aave</strong> question about V4 returned <strong>Uniswap's</strong> “Four for V4” as its top hits. “V4” is shared vocabulary across DAOs, and nothing in the chunk <em>text</em> disambiguated it.</p>
+    <p>The protocol name was always in the database as a column — but <strong>a column is invisible to a vector</strong>. The embedding only ever sees the chunk's text. So the text now leads with the protocol:</p>
+
+<pre>v1   [ARFC] Oracle Deprecation for Long-tail Assets | Summary | LlamaRisk…
+v2   <b>Aave —</b> [ARFC] Oracle Deprecation for Long-tail Assets | Summary | LlamaRisk…</pre>
+
+    <p>The alternative — a hard <code>WHERE protocol_name = 'aave'</code> filter — was rejected deliberately: a filter that guesses wrong excludes the right answer outright, and it breaks cross-protocol questions like “which DAOs pay delegates?” that legitimately span all five. A text prefix only <em>nudges</em> the ranking.</p>
+    <p><strong>Result: mixed, and kept anyway.</strong> thematic <span class="mono">0.60 → 0.70</span>, but lookup <span class="mono">0.96 → 0.92</span> — and the V4 question that motivated the change got <em>worse</em>. The prefix turned out to be a good <em>topical</em> signal for questions ranging across DAOs, and a weak <em>disambiguating</em> signal for questions naming one.</p>
+    <p>The stronger argument for keeping it came from a different measurement: v2 moved every answerable category <em>closer</em> to the corpus (lookup <span class="mono">−0.032</span>, thematic <span class="mono">−0.028</span>) while leaving the unanswerable ones exactly where they were (<span class="mono">+0.000</span>). Better separation, not just a better score.</p>
+  </div>
+
+  <div class="fix current">
+    <span class="kicker">Column 4 · current</span>
+    <h3>Curation — the corpus contained junk</h3>
+    <p>Prompted by asking the system <em>“how many cats climbed up my tree?”</em>. It correctly returned nothing — but the nearest match was Discourse's <strong>default “Welcome to Discourse” topic</strong>, a thread the forum software creates automatically, full of one-line replies like <em>“You need $ARB tokens”</em>.</p>
+    <p>Those tiny chunks act as <strong>attractors</strong>. On a 14-token chunk the <code>"Arbitrum — Welcome to Discourse"</code> prefix is ~40% of the tokens, so the vector is mostly <em>protocol name</em> and sits near any query mentioning Arbitrum. One caused a genuinely wrong answer to pass both cutoffs.</p>
+    <p><em>Fix:</em> drop platform boilerplate by title, and drop chunks whose body falls below 20 tokens — with an exemption for proposals, where a terse document is still a real governance act. 86 rows removed, no re-embedding. thematic <span class="mono">0.70 → 0.75</span>, micro <span class="mono">0.81 → 0.83</span>.</p>
+
+    <p class="problem">Plus a real bug the new “false rejections” metric caught immediately.</p>
+    <p><code>cross-ens-next-era</code> scored recall <strong>1.00</strong> — perfect — yet the cutoffs silenced it entirely. Its profile:</p>
+
+<pre>0.345  0.347  0.354  0.358  0.360  0.366  0.367  0.368  0.368  0.369</pre>
+
+    <p>Every hit is excellent. But they are all <em>equally</em> excellent, so the gap is tiny and the flatness rule read it as “nothing stands out”. <strong>Flatness cannot distinguish “nothing is relevant” from “everything is relevant.”</strong> In production, a question that retrieved perfectly returned nothing at all.</p>
+    <p><em>Fix:</em> skip the flatness test when the best match is unambiguously close (≤ <span class="mono">0.42</span>). Across 24 eval questions and 17 adversarial probes, no unanswerable question ever came nearer than <span class="mono">0.432</span>, so the exemption is safe. False rejections <span class="mono">2 → 1</span>, negatives still <span class="mono">5/5</span>.</p>
+  </div>
+
+  <h2>Why “chunk scheme” is versioned at all</h2>
+  <p><code>chunk_scheme</code> is part of a row's identity, alongside <code>embedding_model</code>. Two reasons:</p>
+  <ol>
+    <li><strong>It stops a silent staleness bug.</strong> The loader decides what to re-embed by comparing the <em>source content hash</em> — a hash of the document's text. Change how text is <em>chunked</em> and that hash does not move. Without a scheme in the key, the loader reports “already embedded, nothing to do” and serves vectors built by the old chunker forever. Exactly this trap let a stale Phase 3 derivation survive a successful-looking rebuild.</li>
+    <li><strong>It makes changes reversible.</strong> v1 and v2 coexist in the table. Reverting is one constant and costs nothing, because the v1 vectors were never deleted — which is also what made the v1-versus-v2 separation measurement possible at all. Both vector spaces were still there to compare.</li>
+  </ol>
+  <p>Vectors from different schemes are never mixed in one search, for the same reason vectors from different <em>models</em> are never mixed: they encode different text, so ranking across them is meaningless.</p>
+
+  <h2>How to read the current numbers honestly</h2>
+
+  <div class="verdict">
+    <div class="ok">
+      <h3>Working well</h3>
+      <ul>
+        <li><code>cross_source</code> <strong>1.00</strong> throughout — connecting a vote to its debate is the thing the platform exists to do, and it has never failed.</li>
+        <li><code>lookup</code> <strong>0.92</strong> — finding a specific known document is reliable.</li>
+        <li>negatives <strong>5/5</strong>, and outright nonsense is rejected by a wide margin (<span class="mono">0.80–0.91</span> against a <span class="mono">0.48</span> ceiling), so there is no tuning risk at that end.</li>
+      </ul>
+    </div>
+    <div class="weak">
+      <h3>Still weak</h3>
+      <ul>
+        <li><code>thematic</code> <strong>0.75</strong> is the lowest. Cross-protocol questions are genuinely hard: four DAOs use four different words for the same idea.</li>
+        <li><strong>1 false rejection</strong> — <code>theme-delegate-incentives</code> (best <span class="mono">0.458</span>) sits inside the overlap band.</li>
+        <li><strong>1 known false accept</strong> — <em>“How much is the Aave founder paid?”</em> returns a chunk about revenue projections at <span class="mono">0.451</span>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>Those last two cannot be separated by threshold tuning: the false accept sits at <span class="mono">0.451</span> with a gap of <span class="mono">0.049</span>, while the genuine positive sits at <span class="mono">0.458</span> with a <em>worse</em> gap of <span class="mono">0.020</span>. Any rule that blocks one blocks the other. Fixing it needs a reranker, or a synthesis step willing to say “the retrieved text does not answer this”.</p>
+
+  <p><strong>The honest summary:</strong> the system is good at finding specific documents, decent at gathering themes, reliable at refusing nonsense, and imperfect in a narrow band where plausible-sounding unanswerable questions look exactly like hard answerable ones. That band is documented rather than tuned away, because tuning it in either direction just trades one error for the other.</p>
+
+  <footer class="page">
+    <p>Reproduce every number above:</p>
+<pre>make search Q="oracle deprecation for long-tail assets"
+make eval ARGS="--verbose"</pre>
+    <p>Companion documents: <code>phase-4-retrieval.md</code> records the decisions as they were made · <code>phase-4-exit-demo.md</code> covers building the CLI · <code>phase-4-corpus-curation.md</code> covers the cats question · <code>chunking.md</code> details how documents are split.</p>
+  </footer>
+
+</main>
