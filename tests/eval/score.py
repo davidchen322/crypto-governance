@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -34,12 +35,28 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from ai_agent.chains.chunking import CHUNK_SCHEME  # noqa: E402
 from ai_agent.chains.retrieval import (  # noqa: E402
     DEFAULT_MAX_DISTANCE,
     DEFAULT_MIN_GAP,
     SearchResult,
     search,
 )
+
+
+def corpus_chunks() -> int:
+    """Size of the corpus actually being scored. A recall number measured against a pruned
+    corpus is not comparable to one measured before the pruning unless this is recorded."""
+    import psycopg
+
+    from config.settings import Settings
+
+    with psycopg.connect(Settings.from_env().postgres_dsn) as conn:
+        return conn.execute(
+            "SELECT count(*) FROM document_embeddings WHERE chunk_scheme = %s",
+            (CHUNK_SCHEME,),
+        ).fetchone()[0]
+
 
 QUESTIONS = Path(__file__).parent / "questions.yaml"
 RESULTS = Path(__file__).parent / "baseline.json"
@@ -84,6 +101,15 @@ def score_question(q: dict, k: int, threshold: float, min_gap: float) -> dict:
     found = retrieved_keys(results)
     expected = {expected_key(e) for e in q["expect"]}
     matched = expected & found
+
+    # Cutoffs ON, same question. Scoring recall with the cutoffs off measures the ranking and
+    # nothing else, which means a cutoff that rejects a perfectly answerable question costs
+    # zero on the headline number — only the five negatives ever exercise the thresholds.
+    # That blind spot is how constants fitted against chunk scheme v1 were inherited by v2
+    # without anyone noticing. `answerable` records whether the question survives the cutoffs
+    # at all, so a false rejection now costs a number.
+    gated = search(q["question"], k=k, max_distance=threshold, min_gap=min_gap)
+
     return {
         "id": q["id"],
         "kind": q["kind"],
@@ -95,6 +121,7 @@ def score_question(q: dict, k: int, threshold: float, min_gap: float) -> dict:
         "best_distance": round(min((r.distance for r in results), default=float("nan")), 4)
         if results
         else None,
+        "answerable": len(gated) > 0,
     }
 
 
@@ -154,6 +181,13 @@ def main(argv: list[str] | None = None) -> int:
                 f"  {YELLOW}leak{RESET}  {s['id']}: {s['leaked']} chunk(s), closest {s['closest']}"
             )
 
+    # The other half of the cutoff's behaviour, which recall alone cannot see.
+    rejected = [s for s in positives if not s["answerable"]]
+    print(f"\n{BOLD}false rejections{RESET}  (answerable questions the cutoffs silence)")
+    print(f"  survived       {len(positives) - len(rejected)}/{len(positives)}")
+    for s in rejected:
+        print(f"  {YELLOW}rejected{RESET}  {s['id']} ({s['kind']}, best {s['best_distance']})")
+
     if args.save:
         RESULTS.write_text(
             json.dumps(
@@ -162,10 +196,17 @@ def main(argv: list[str] | None = None) -> int:
                     "k": args.k,
                     "threshold": args.threshold,
                     "min_gap": args.min_gap,
+                    # Without these a baseline is unattributable: two runs with the same
+                    # micro recall may have measured different vector spaces entirely.
+                    "embedding_model": os.getenv("EMBEDDING_MODEL", "text-embedding-3-large"),
+                    "chunk_scheme": CHUNK_SCHEME,
+                    "corpus_chunks": corpus_chunks(),
                     "micro_recall": round(micro, 4),
                     "macro_recall": round(macro, 4),
                     "negatives_clean": clean,
                     "negatives_total": len(negatives),
+                    "positives_surviving_cutoffs": len(positives) - len(rejected),
+                    "positives_total": len(positives),
                     "by_kind": {k: round(sum(v) / len(v), 4) for k, v in by_kind.items()},
                     "questions": scored,
                 },

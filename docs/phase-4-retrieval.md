@@ -1,22 +1,29 @@
 # Phase 4 — Embeddings, Retrieval and the Baseline
 
-**Status:** Baseline measured, all three findings addressed · **Date:** 17 Aug 2026
+**Status:** Baseline measured, findings addressed, corpus curated · **Date:** 18 Aug 2026
 
 ## Current numbers
 
-| Metric | First baseline | After diversity + gap threshold | After chunk scheme v2 |
-| --- | --- | --- | --- |
-| micro recall@5 | 0.67 | 0.78 | **0.81** |
-| macro recall@5 | 0.82 | 0.88 | **0.89** |
-| lookup | 0.88 | **0.96** | 0.92 |
-| thematic | 0.50 | 0.60 | **0.70** |
-| cross_source | 1.00 | 1.00 | 1.00 |
-| negatives clean | 0/5 | 5/5 | 5/5 |
+> **New to these metrics?** [`phase-4-explained.md`](phase-4-explained.md) defines every one
+> of them in plain language and walks through why each column exists.
 
-The first two fixes cost nothing. The third cost $0.055 and is a **mixed result, not a
-clean win** — it is kept on the strength of micro, macro and thematic, against a real
-regression in lookup. That trade is argued in *Chunk scheme v2* below, and it is reversible
-with one constant because both schemes are still in the table.
+| Metric | First baseline | + diversity & gap threshold | + chunk scheme v2 | + curation |
+| --- | --- | --- | --- | --- |
+| micro recall@5 | 0.67 | 0.78 | 0.81 | **0.83** |
+| macro recall@5 | 0.82 | 0.88 | 0.89 | **0.90** |
+| lookup | 0.88 | **0.96** | 0.92 | 0.92 |
+| thematic | 0.50 | 0.60 | 0.70 | **0.75** |
+| cross_source | 1.00 | 1.00 | 1.00 | 1.00 |
+| negatives clean | 0/5 | 5/5 | 5/5 | **5/5** |
+| false rejections | *not measured* | *not measured* | *not measured* | **1/19** |
+
+Each column is the same 24 questions re-run after a change. Every fix so far has been free
+except chunk scheme v2 ($0.055) and the curation pass ($0.0001) — none required re-embedding
+the corpus.
+
+Detail lives in *Fixes applied*, *Chunk scheme v2* and
+[`phase-4-corpus-curation.md`](phase-4-corpus-curation.md). The original baseline and its
+analysis follow, kept because the reasoning is what makes the numbers meaningful.
 
 ---
 

@@ -1,15 +1,20 @@
 {
-  "recorded_at": "2026-08-17T21:47:16.428391+00:00",
+  "recorded_at": "2026-08-18T17:48:05.035819+00:00",
   "k": 5,
   "threshold": 0.48,
   "min_gap": 0.025,
-  "micro_recall": 0.8056,
-  "macro_recall": 0.886,
+  "embedding_model": "text-embedding-3-large",
+  "chunk_scheme": "v2",
+  "corpus_chunks": 1593,
+  "micro_recall": 0.8333,
+  "macro_recall": 0.8991,
   "negatives_clean": 5,
   "negatives_total": 5,
+  "positives_surviving_cutoffs": 18,
+  "positives_total": 19,
   "by_kind": {
     "lookup": 0.9167,
-    "thematic": 0.7,
+    "thematic": 0.75,
     "cross_source": 1.0
   },
   "questions": [
@@ -21,7 +26,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.2472
+      "best_distance": 0.2472,
+      "answerable": true
     },
     {
       "id": "aave-low-adoption-offboarding",
@@ -31,7 +37,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.2964
+      "best_distance": 0.2964,
+      "answerable": true
     },
     {
       "id": "ens-security-council-expiry",
@@ -41,7 +48,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.2905
+      "best_distance": 0.2905,
+      "answerable": true
     },
     {
       "id": "uniswap-four-for-v4-chains",
@@ -51,7 +59,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.2531
+      "best_distance": 0.2531,
+      "answerable": true
     },
     {
       "id": "aave-v4-deployment-targets",
@@ -61,10 +70,11 @@
       "recall": 0.3333333333333333,
       "passed": false,
       "missed": [
-        "proposal:0x483ba7867741",
-        "proposal:0xdca149f83dc6"
+        "proposal:0xdca149f83dc6",
+        "proposal:0xe5c4a9387ce1"
       ],
-      "best_distance": 0.3323
+      "best_distance": 0.3323,
+      "answerable": true
     },
     {
       "id": "uniswap-unification",
@@ -74,7 +84,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.2775
+      "best_distance": 0.2775,
+      "answerable": true
     },
     {
       "id": "arbitrum-arbos-60",
@@ -84,7 +95,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.3772
+      "best_distance": 0.3772,
+      "answerable": true
     },
     {
       "id": "aave-upgrade-safety-checker",
@@ -94,7 +106,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.2171
+      "best_distance": 0.2171,
+      "answerable": true
     },
     {
       "id": "theme-protocol-fee-expansion",
@@ -104,7 +117,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.2469
+      "best_distance": 0.2469,
+      "answerable": true
     },
     {
       "id": "theme-risk-reduction",
@@ -117,7 +131,8 @@
         "proposal:0x4ec0c13baf55",
         "proposal:0xaa683250ff2e"
       ],
-      "best_distance": 0.3477
+      "best_distance": 0.3509,
+      "answerable": true
     },
     {
       "id": "theme-delegate-incentives",
@@ -129,7 +144,8 @@
       "missed": [
         "proposal:0xea4a1505c96c"
       ],
-      "best_distance": 0.4582
+      "best_distance": 0.4582,
+      "answerable": false
     },
     {
       "id": "theme-treasury-management",
@@ -141,19 +157,19 @@
       "missed": [
         "proposal:0x0b5fde95f53b"
       ],
-      "best_distance": 0.3566
+      "best_distance": 0.3568,
+      "answerable": true
     },
     {
       "id": "theme-v4-rollout",
       "kind": "thematic",
       "expected": 4,
-      "matched": 3,
-      "recall": 0.75,
-      "passed": false,
-      "missed": [
-        "proposal:0x3fda3c04fa10"
-      ],
-      "best_distance": 0.3164
+      "matched": 4,
+      "recall": 1.0,
+      "passed": true,
+      "missed": [],
+      "best_distance": 0.3164,
+      "answerable": true
     },
     {
       "id": "cross-v4-fees-debate",
@@ -163,7 +179,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.2201
+      "best_distance": 0.2201,
+      "answerable": true
     },
     {
       "id": "cross-four-for-v4-debate",
@@ -173,7 +190,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.4549
+      "best_distance": 0.4549,
+      "answerable": true
     },
     {
       "id": "cross-aave-v4-mainnet",
@@ -183,7 +201,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.2444
+      "best_distance": 0.2444,
+      "answerable": true
     },
     {
       "id": "cross-optimism-constitution",
@@ -193,7 +212,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.2162
+      "best_distance": 0.2162,
+      "answerable": true
     },
     {
       "id": "cross-lombard-collateral-risk",
@@ -203,7 +223,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.2831
+      "best_distance": 0.283,
+      "answerable": true
     },
     {
       "id": "cross-ens-next-era",
@@ -213,7 +234,8 @@
       "recall": 1.0,
       "passed": true,
       "missed": [],
-      "best_distance": 0.3142
+      "best_distance": 0.3455,
+      "answerable": true
     },
     {
       "id": "neg-compound",

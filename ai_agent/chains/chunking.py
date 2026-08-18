@@ -57,6 +57,12 @@ class Chunk:
     index: int
     tokens: int
     heading: str | None  # nearest enclosing heading, carried for provenance
+    # Tokens of body text, EXCLUDING the protocol/title prefix that chunk_proposal prepends.
+    # The prefix is identical across every chunk of a document, so it carries no per-chunk
+    # information — and on a very short chunk it dominates the embedding, which is how a
+    # 14-token forum reply came to sit near any query naming its protocol. Curation decisions
+    # about whether a chunk says anything must therefore use this, not `tokens`.
+    body_tokens: int = 0
 
 
 def _split_by_headings(text: str) -> list[tuple[str | None, str]]:
@@ -148,12 +154,15 @@ def chunk_document(
     chunks = []
     for index, (heading, body) in enumerate(merged):
         prefixed = f"{heading}\n\n{body}" if heading else body
+        tokens = count_tokens(prefixed)
         chunks.append(
             Chunk(
                 text=prefixed.strip(),
                 index=index,
-                tokens=count_tokens(prefixed),
+                tokens=tokens,
                 heading=heading,
+                # No title prefix has been applied at this level, so body == whole chunk.
+                body_tokens=tokens,
             )
         )
     return chunks
@@ -180,7 +189,19 @@ def chunk_proposal(title: str | None, body: str | None, protocol: str | None = N
         title = f"{protocol} — {title}" if title else protocol
     body = (body or "").strip()
     if not body:
-        return chunk_document(title) if title else []
+        # Title-only chunk. `body_tokens=0` is the honest report and it matters downstream:
+        # curation needs to distinguish "no body at all" from "a short body", because the
+        # former has nothing to retrieve. In silver, 9 forum posts have an empty body, and
+        # they all hash to sha256("") — so the UNIQUE constraint collapses every one of them
+        # onto a single embedding row carrying an arbitrary one's title.
+        return (
+            [
+                Chunk(text=c.text, index=c.index, tokens=c.tokens, heading=c.heading, body_tokens=0)
+                for c in chunk_document(title)
+            ]
+            if title
+            else []
+        )
 
     chunks = chunk_document(body)
     if not title:
@@ -191,6 +212,8 @@ def chunk_proposal(title: str | None, body: str | None, protocol: str | None = N
             index=c.index,
             tokens=count_tokens(f"{title}\n\n{c.text}"),
             heading=c.heading,
+            # Carried through unprefixed: this is what curation filters must judge.
+            body_tokens=c.body_tokens,
         )
         for c in chunks
     ]

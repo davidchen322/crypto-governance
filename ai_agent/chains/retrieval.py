@@ -53,6 +53,24 @@ DEFAULT_MIN_GAP = 0.025
 # the signal independent of `k` and FETCH_MULTIPLIER.
 GAP_WINDOW = 10
 
+# Below this distance the flatness test is skipped entirely.
+#
+# Flatness conflates two opposite situations: "nothing is relevant" and "EVERYTHING is
+# relevant". Both produce a profile with no standout. Measured, `cross-ens-next-era` scored
+# recall 1.00 with a top-10 profile of 0.345-0.369 — every hit strongly on topic — and the
+# gap test silenced it completely. In production that question would have returned nothing
+# while retrieving perfectly.
+#
+# The exemption is safe because the two signals are only ever in tension inside a narrow band.
+# Across 24 eval questions and 17 adversarial probes (plausible negatives, rephrasings, and
+# outright nonsense), the closest any unanswerable question came was 0.4320. A best match
+# nearer than that has never been anything but genuinely relevant, so the flatness test can
+# only cause harm there.
+#
+# Re-derive this if the corpus or the embedding model changes: it is the floor of the observed
+# negative distribution minus a margin, not a property of the embedding space.
+GAP_EXEMPT_DISTANCE = 0.42
+
 # Diversity: how many chunks any single document may contribute, and how much to over-fetch
 # to find enough distinct documents. Without this, top-5 chunks averaged 2.0 distinct
 # documents — three of five slots wasted on near-duplicates from a document already
@@ -113,17 +131,28 @@ def embed_query(text: str) -> list[float]:
     return payload["data"][0]["embedding"]
 
 
-def looks_unanswerable(results: list[SearchResult], min_gap: float) -> bool:
+def looks_unanswerable(
+    results: list[SearchResult],
+    min_gap: float,
+    gap_exempt_distance: float = GAP_EXEMPT_DISTANCE,
+) -> bool:
     """True when the distance profile is flat — nothing stands out from the pack.
 
     Vector search always returns k results; something is always closest. On a question the
     corpus cannot answer, those k are uniformly mediocre. That flatness is a signal the
     absolute distance throws away.
+
+    Flatness alone is not enough, though, because a *densely covered* question is also flat —
+    ten strongly relevant chunks have no standout either. `gap_exempt_distance` resolves the
+    ambiguity the only way it can be resolved: by absolute proximity. If the best match is
+    unambiguously close, the question is answerable no matter how flat the tail.
     """
     window = results[:GAP_WINDOW]
     if len(window) < 2:
         return False
     best = window[0].distance
+    if best <= gap_exempt_distance:
+        return False
     mean = sum(r.distance for r in window) / len(window)
     return (mean - best) < min_gap
 

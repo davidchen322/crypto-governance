@@ -217,3 +217,45 @@ def test_too_few_results_is_not_treated_as_flat():
 
     assert not looks_unanswerable([], min_gap=0.025)
     assert not looks_unanswerable([make_result("proposal", "A", 0.9)], min_gap=0.025)
+
+
+# --------------------------------------------------------------------------
+# The gap exemption — flatness alone cannot tell "nothing relevant" from
+# "everything relevant"
+# --------------------------------------------------------------------------
+
+
+def test_a_densely_covered_question_is_not_treated_as_unanswerable():
+    """The bug this pins. `cross-ens-next-era` scored recall 1.00 with a top-10 profile of
+    0.345-0.369 — every hit strongly on topic — and the flatness test silenced it completely.
+    In production that question retrieved perfectly and returned nothing.
+
+    Flatness conflates two opposite situations: nothing is relevant, and everything is. Only
+    absolute proximity distinguishes them."""
+    from ai_agent.chains.retrieval import looks_unanswerable
+
+    dense = [make_result("proposal", chr(65 + i), 0.345 + 0.0025 * i) for i in range(10)]
+    gap = sum(r.distance for r in dense) / len(dense) - dense[0].distance
+    assert gap < 0.025, "fixture must be flat, or it is not testing the exemption"
+    assert not looks_unanswerable(dense, min_gap=0.025)
+
+
+def test_a_flat_and_distant_profile_is_still_unanswerable():
+    """The exemption must not swallow the signal it was carved out of. Across 24 eval questions
+    and 17 adversarial probes the closest unanswerable question came was 0.4320, which is why
+    the exemption sits at 0.42."""
+    from ai_agent.chains.retrieval import looks_unanswerable
+
+    flat = [make_result("proposal", chr(65 + i), 0.44 + 0.001 * i) for i in range(10)]
+    assert looks_unanswerable(flat, min_gap=0.025)
+
+
+def test_the_exemption_boundary_is_where_it_is_documented():
+    from ai_agent.chains.retrieval import GAP_EXEMPT_DISTANCE, looks_unanswerable
+
+    just_inside = [make_result("proposal", chr(65 + i), GAP_EXEMPT_DISTANCE) for i in range(10)]
+    just_outside = [
+        make_result("proposal", chr(65 + i), GAP_EXEMPT_DISTANCE + 0.001) for i in range(10)
+    ]
+    assert not looks_unanswerable(just_inside, min_gap=0.025)
+    assert looks_unanswerable(just_outside, min_gap=0.025)

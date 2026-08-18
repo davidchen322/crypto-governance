@@ -16,6 +16,7 @@ import os
 import psycopg
 import pytest
 
+from ai_agent.chains.chunking import CHUNK_SCHEME
 from ai_agent.chains.retrieval import search
 from config.settings import Settings
 
@@ -279,3 +280,69 @@ def test_titles_match_the_prefix_embedded_in_v2_chunk_text(conn):
           AND position(substring(title from 1 for 12) in text_chunk) = 0
     """).fetchone()[0]
     assert mismatched == 0
+
+
+# --------------------------------------------------------------------------
+# Curation — the corpus must stay clean, not just be cleaned once
+# --------------------------------------------------------------------------
+
+
+def test_no_platform_boilerplate_survives_in_the_corpus(conn):
+    """Discourse's default welcome topic supplied the top hit for 'how many cats climbed up my
+    tree?' and caused a market-cap question to pass both cutoffs on a 14-token reply."""
+    from config.corpus_filters import is_boilerplate_topic
+
+    titles = conn.execute(
+        "SELECT DISTINCT title FROM document_embeddings WHERE source='forum' AND title IS NOT NULL"
+    ).fetchall()
+    offenders = [t for (t,) in titles if is_boilerplate_topic(t)]
+    assert offenders == [], f"boilerplate still embedded: {offenders}"
+
+
+def test_no_contentless_chunks_survive_in_the_corpus(conn):
+    """A chunk carrying a handful of words is mostly protocol-name under v2, so it sits near
+    any query naming that protocol regardless of subject."""
+    worst = conn.execute(
+        "SELECT min(token_count) FROM document_embeddings WHERE chunk_scheme = %s",
+        (CHUNK_SCHEME,),
+    ).fetchone()[0]
+    assert worst >= 20, f"shortest chunk is {worst} tokens"
+
+
+def test_the_degenerate_empty_content_hash_is_absent(conn):
+    """sha256('') — every empty-bodied post shares it, so the UNIQUE constraint keeps one row
+    and attributes it to an arbitrary document. Nine silver posts qualify.
+
+    Scoped to the ACTIVE scheme. A retired scheme is pruned for boilerplate only, because that
+    rule depends on the thread title alone; the token floor cannot be applied to it, since
+    today's chunker cannot reproduce a retired chunker's boundaries and guessing at them would
+    delete real rows. Retired vectors exist so a chunking change can be reverted without
+    paying to re-embed, and only the active scheme is ever searched."""
+    n = conn.execute(
+        "SELECT count(*) FROM document_embeddings "
+        "WHERE source_content_hash = %s AND chunk_scheme = %s",
+        ("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", CHUNK_SCHEME),
+    ).fetchone()[0]
+    assert n == 0
+
+
+def test_the_corpus_matches_what_the_loader_would_produce(conn):
+    """Drift check. If these disagree, the next `make embed` silently changes retrieval results
+    and every recorded number becomes unattributable."""
+    from ai_agent.chains.embeddings import load_silver_chunks
+
+    produced = {
+        (c.source, c.document_id, c.source_content_hash, c.chunk_index)
+        for c in load_silver_chunks()
+    }
+    stored = {
+        tuple(r)
+        for r in conn.execute(
+            "SELECT source, document_id, source_content_hash, chunk_index "
+            "FROM document_embeddings WHERE chunk_scheme = %s",
+            (CHUNK_SCHEME,),
+        ).fetchall()
+    }
+    assert not (stored - produced), (
+        f"{len(stored - produced)} stored chunk(s) the loader no longer produces"
+    )

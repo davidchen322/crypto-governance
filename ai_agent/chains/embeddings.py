@@ -25,6 +25,11 @@ import psycopg
 
 from ai_agent.chains.chunking import CHUNK_SCHEME, chunk_forum_post, chunk_proposal
 from ai_agent.chains.trino_client import query as trino_query
+from config.corpus_filters import (
+    MIN_BODY_TOKENS,
+    is_boilerplate_topic,
+    is_substantive_chunk,
+)
 from config.protocols import BY_NAME
 from config.settings import Settings, load_dotenv
 from data_pipeline.extraction.http import HttpClient, TokenBucket
@@ -69,9 +74,22 @@ def load_silver_chunks() -> list[PendingChunk]:
         FROM iceberg.silver.proposal_versions
         WHERE is_current
     """)
+    # Curation counters, reported rather than silently applied. A filter that quietly drops
+    # source data is indistinguishable from a bug in the extractor.
+    dropped_boilerplate = 0
+    dropped_runt = 0
+
     for row in proposals:
         label = BY_NAME[row["protocol_name"]].label
-        for chunk in chunk_proposal(row["title"], row["body"], protocol=label):
+        chunks = chunk_proposal(row["title"], row["body"], protocol=label)
+        for chunk in chunks:
+            # A proposal that reduces to one chunk is exempt: it is a governance act with a
+            # vote attached and nothing else in the corpus stands in for it.
+            if not is_substantive_chunk(
+                chunk.body_tokens, is_indivisible_document=len(chunks) == 1
+            ):
+                dropped_runt += 1
+                continue
             pending.append(
                 PendingChunk(
                     source="proposal",
@@ -101,7 +119,16 @@ def load_silver_chunks() -> list[PendingChunk]:
     """)
     for row in posts:
         label = BY_NAME[row["protocol_name"]].label
-        for chunk in chunk_forum_post(row["topic_title"], row["body_text"], protocol=label):
+        if is_boilerplate_topic(row["topic_title"]):
+            dropped_boilerplate += 1
+            continue
+        chunks = chunk_forum_post(row["topic_title"], row["body_text"], protocol=label)
+        for chunk in chunks:
+            # No exemption for forum posts: a one-line reply is not a governance act, and its
+            # topic stays retrievable through the posts that do carry substance.
+            if not is_substantive_chunk(chunk.body_tokens):
+                dropped_runt += 1
+                continue
             pending.append(
                 PendingChunk(
                     source="forum",
@@ -119,6 +146,12 @@ def load_silver_chunks() -> list[PendingChunk]:
                     document_date=row["document_date"],
                 )
             )
+
+    if dropped_boilerplate or dropped_runt:
+        print(
+            f"  curation: skipped {dropped_boilerplate} boilerplate post(s), "
+            f"{dropped_runt} chunk(s) under {MIN_BODY_TOKENS} body tokens"
+        )
     return pending
 
 
