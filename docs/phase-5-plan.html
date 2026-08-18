@@ -293,6 +293,67 @@
   <p>Total rejection and total confidence — a clean split where the distances (<span class="mono">0.451</span> vs <span class="mono">0.458</span>) have the two in the <em>wrong order</em>.</p>
   <p>But the same model <strong>reranking for order made thematic recall worse</strong> (<span class="mono">0.78 → 0.72</span>): it optimises “does this passage answer the question”, so it prefers one deeply detailed protocol over the spread of documents a cross-protocol question needs. <strong>Judge, don't reorder.</strong> Measured cost ~<span class="mono">$0.0004</span>/query.</p>
 
+  <h3>2b. Route is not enough — the router also decides <em>scope</em></h3>
+  <p>The three routes answer <em>which store</em>. They do not answer <strong>how wide</strong>, and for thematic questions that second dimension matters more than the first. Two questions, both <code>vector</code>, needing opposite handling:</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th></th><th>Question</th><th>Correct handling</th></tr></thead>
+      <tbody>
+        <tr><td>single-protocol</td><td><em>“What is <strong>Aave</strong> doing to reduce risk surface?”</em></td><td>rank globally; do <strong>not</strong> spread across protocols</td></tr>
+        <tr><td>cross-protocol</td><td><em>“<strong>Which protocols</strong> run programs to pay delegates?”</em></td><td>guarantee every protocol is examined</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Getting it backwards is actively harmful — fan-out applied to a single-protocol question <strong>loses</strong> documents, because slots are reserved for protocols with nothing to say:</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Question</th><th class="n">flat k=5</th><th class="n">fan-out 4×5</th></tr></thead>
+      <tbody>
+        <tr><td><code>theme-protocol-fee-expansion</code> (Uniswap)</td><td class="n win">4/4</td><td class="n lose">3/4</td></tr>
+        <tr><td><code>theme-v4-rollout</code> (Uniswap)</td><td class="n win">4/4</td><td class="n lose">3/4</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>2c. For “which protocols…”, fan-out beats a bigger <code>k</code></h3>
+  <p>A question of that form asks for <strong>coverage</strong>, not ranking. One ranked list structurally cannot guarantee each protocol a fair look — a single protocol's vocabulary can dominate it. Fan-out changes the retrieval <em>shape</em> to match the question's shape: one search per protocol, filter applied, then assemble.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Strategy</th><th class="n">cross-protocol recall</th><th class="n">documents returned</th></tr></thead>
+      <tbody>
+        <tr><td>flat k=20</td><td class="n">6/7</td><td class="n">10</td></tr>
+        <tr><td>fan-out 4 × 5</td><td class="n">6/7</td><td class="n">15</td></tr>
+        <tr><td><strong>fan-out 8 × 5</strong></td><td class="n win">7/7</td><td class="n">30</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Flat <code>k=20</code> and fan-out fix <em>different</em> questions — one needs depth, the other breadth. Only fan-out at depth 8 gets both, at 3× the analyst's context.</p>
+  <div class="callout">
+    <p><strong>The stronger argument for fan-out is not recall — it is that fan-out can answer the question's negative half.</strong> “Which protocols?” implies naming the ones that have nothing. A flat ranked list cannot report an absence; a per-protocol search can, because that protocol was searched specifically and returned nothing above threshold.</p>
+<pre>"What are DAOs doing with idle treasury funds?"
+  Uniswap    <b>accept</b>   best 0.464
+  Arbitrum   <b>accept</b>   best 0.357
+  Aave       —        best 0.548   nothing above the cutoff
+  Optimism   —        best 0.524
+  ENS        —        best 0.493</pre>
+    <p>That is a directly usable answer. Twenty ranked chunks are not.</p>
+  </div>
+
+  <h3>2d. Warning — the cutoffs were fitted on <em>unfiltered</em> searches</h3>
+  <div class="callout warn">
+    <p>Applying a protocol filter changes the candidate pool, which changes the distance profile, which changes the threshold verdict. The constants do not transfer:</p>
+<pre>"Which protocols are running or debating programs to pay delegates?"
+  UNFILTERED  best 0.458  gap 0.020
+  Aave        best 0.587  gap 0.033
+  Uniswap     best 0.506  gap 0.012
+  Arbitrum    best 0.458  gap 0.020
+  Optimism    best 0.496  gap 0.055
+  ENS         best 0.498  gap 0.019</pre>
+    <p>Filtering to one protocol makes results more homogeneous, so the gap narrows for reasons unrelated to answerability. <strong>Any Phase 5 node that applies a filter must re-validate the cutoffs for the filtered case, or use the relevance judge instead of the thresholds.</strong></p>
+  </div>
+  <p>Fan-out therefore <em>inherits</em> the one known false rejection rather than fixing it — the delegate question is rejected under every filter above, exactly as it is unfiltered. The judge resolves that, not the retrieval shape.</p>
+  <p><strong>Sample-size caveat:</strong> only 2 of the 5 thematic eval questions are genuinely cross-protocol. These numbers are suggestive, not settled — growing that group is the cheapest way to decide this on evidence rather than two data points.</p>
+
   <h3>3. Protocol filtering belongs to the router</h3>
   <p>Phase 4 tested whether chunk text alone could fix protocol bleed. It could not. The filter works — <span class="mono">0/3 → 2/3</span> — but applying it needs the question parsed, and a wrong guess excludes the right answer entirely. That is a decision requiring intent, which is what the router produces.</p>
 

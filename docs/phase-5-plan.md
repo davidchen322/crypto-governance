@@ -211,6 +211,90 @@ protocol over the spread of documents a cross-protocol question needs.
 **So: judge, don't reorder.** Ask "does any of this actually address the question?" and let a
 "no" trigger `DATA GAP IDENTIFIED`. Cost measured at ~$0.0004/query.
 
+### 2b. Route is not enough — the router also has to decide *scope*
+
+The three routes (`sql` / `vector` / `hybrid`) answer *which store*. They do not answer
+**how wide**, and for thematic questions that second dimension matters more than the first.
+
+Two questions, both `vector`, needing opposite handling:
+
+| | Question | Correct handling |
+| --- | --- | --- |
+| single-protocol | *"What is **Aave** doing to reduce risk surface?"* | rank globally; do **not** spread across protocols |
+| cross-protocol | *"**Which protocols** are running programs to pay delegates?"* | guarantee every protocol is examined |
+
+Getting it backwards is actively harmful. Measured — fan-out applied to a single-protocol
+thematic question **loses** documents, because slots are reserved for protocols that have
+nothing to say:
+
+| Question | flat k=5 | fan-out 4x5 |
+| --- | --- | --- |
+| `theme-protocol-fee-expansion` (Uniswap) | **4/4** | 3/4 |
+| `theme-v4-rollout` (Uniswap) | **4/4** | 3/4 |
+
+### 2c. For "which protocols…", fan-out beats a bigger k
+
+A question of the form *"which protocols have proposed X"* is asking for **coverage**, not
+ranking. One ranked list structurally cannot guarantee each protocol a fair look — a single
+protocol's vocabulary can dominate the whole list. Fan-out changes the retrieval *shape* to
+match the question's shape: one search per protocol, with the protocol filter applied, then
+assemble.
+
+| Strategy | cross-protocol recall | documents returned |
+| --- | --- | --- |
+| flat k=20 | 6/7 | 10 |
+| fan-out 4 x 5 | 6/7 | 15 |
+| **fan-out 8 x 5** | **7/7** | 30 |
+
+Note flat k=20 and fan-out fix *different* questions — `theme-delegate-incentives` needs
+depth (flat k=20 finds it, fan-out at 4 does not), `theme-treasury-management` needs breadth
+(fan-out finds it, flat k=20 never does). Only fan-out at depth 8 gets both, and it costs 3x
+the analyst's context.
+
+**The stronger argument for fan-out is not recall — it is that fan-out can answer the
+question's negative half.** *"Which protocols?"* implies naming the ones that have nothing.
+A flat ranked list cannot report an absence; a per-protocol search can, because the protocol
+was searched specifically and returned nothing above threshold:
+
+```
+"What are DAOs doing with idle treasury funds?"
+  Uniswap    accept   best 0.464
+  Arbitrum   accept   best 0.357
+  Aave       —        best 0.548   nothing above the cutoff
+  Optimism   —        best 0.524
+  ENS        —        best 0.493
+```
+
+That is a directly usable answer. Twenty ranked chunks are not.
+
+### 2d. Warning: the relevance cutoffs were fitted on UNFILTERED searches
+
+Applying a protocol filter changes the candidate pool, which changes the distance profile,
+which changes the threshold verdict. The constants do not transfer:
+
+```
+"Which protocols are running or debating programs to pay delegates?"
+  UNFILTERED  best 0.458  gap 0.020
+  Aave        best 0.587  gap 0.033
+  Uniswap     best 0.506  gap 0.012
+  Arbitrum    best 0.458  gap 0.020
+  Optimism    best 0.496  gap 0.055
+  ENS         best 0.498  gap 0.019
+```
+
+`DEFAULT_MAX_DISTANCE` and `DEFAULT_MIN_GAP` were fitted across the whole corpus. Filtering
+to one protocol makes results more homogeneous, so the gap narrows for reasons that have
+nothing to do with answerability. **Any Phase 5 node that applies a filter must re-validate
+the cutoffs for the filtered case, or use the relevance judge instead of the thresholds.**
+
+This also means fan-out inherits the one known false rejection rather than fixing it — the
+delegate question is rejected under every filter above, exactly as it is unfiltered. The
+judge from finding 2 is what resolves that, not the retrieval shape.
+
+**Sample-size caveat:** only 2 of the 5 thematic eval questions are genuinely cross-protocol.
+These numbers are suggestive, not settled. Growing that group is the cheapest way to make this
+decision on evidence rather than on two data points.
+
 ### 3. Protocol filtering belongs to the router
 
 Phase 4 tested whether chunk text alone could fix protocol bleed (an Aave question returning
