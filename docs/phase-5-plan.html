@@ -1,0 +1,376 @@
+<title>Phase 5, Planned</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground:#F7F8FA; --surface:#FFFFFF; --surface-alt:#F0F3F6;
+    --ink:#16202B; --ink-mid:#3D4C5A; --ink-muted:#64727F;
+    --rule:#DDE3E9; --rule-strong:#C3CDD6;
+    --accent:#A65A11; --accent-soft:#F2E3D2;
+    --sql:#0F766E;  --sql-soft:#D7E9E6;
+    --vec:#A65A11;  --vec-soft:#F2E3D2;
+    --hyb:#4C4392;  --hyb-soft:#E2E0F0;
+    --bad:#9F3A4A;
+    --shadow:0 1px 2px rgba(22,32,43,.05), 0 8px 24px -16px rgba(22,32,43,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0E151C; --surface:#141D26; --surface-alt:#1A2531;
+      --ink:#E5EAEF; --ink-mid:#B6C2CD; --ink-muted:#8A99A7;
+      --rule:#253442; --rule-strong:#35485A;
+      --accent:#E8A33D; --accent-soft:#3A2C17;
+      --sql:#4FB3A5; --sql-soft:#16302E;
+      --vec:#E8A33D; --vec-soft:#3A2C17;
+      --hyb:#9990D8; --hyb-soft:#232048;
+      --bad:#D97A8A;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0E151C; --surface:#141D26; --surface-alt:#1A2531;
+    --ink:#E5EAEF; --ink-mid:#B6C2CD; --ink-muted:#8A99A7;
+    --rule:#253442; --rule-strong:#35485A;
+    --accent:#E8A33D; --accent-soft:#3A2C17;
+    --sql:#4FB3A5; --sql-soft:#16302E;
+    --vec:#E8A33D; --vec-soft:#3A2C17;
+    --hyb:#9990D8; --hyb-soft:#232048;
+    --bad:#D97A8A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    background:var(--ground); color:var(--ink);
+    font-family:"Source Serif 4", Georgia, serif;
+    font-size:1.0625rem; line-height:1.65; margin:0;
+    padding:0 1.5rem 6rem; -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:46rem; margin:0 auto; }
+  .wide { max-width:62rem; margin:0 auto; }
+
+  h1,h2,h3,.eyebrow,th,.label,.num,.kicker,.pill,.node-t { font-family:Archivo,"Helvetica Neue",Arial,sans-serif; }
+
+  .eyebrow { font-size:.75rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+             color:var(--accent); margin:0 0 1.25rem; }
+  h1 { font-size:clamp(2.4rem,6vw,3.6rem); font-weight:700; letter-spacing:-.032em;
+       line-height:1.02; text-wrap:balance; margin:0 0 1.25rem; }
+  .lede { font-size:1.25rem; line-height:1.5; color:var(--ink-mid); margin:0 0 2rem; text-wrap:pretty; }
+  .meta { font-family:"IBM Plex Mono",monospace; font-size:.78rem; color:var(--ink-muted);
+          display:flex; flex-wrap:wrap; gap:.5rem 1.5rem; padding-top:1.5rem; border-top:1px solid var(--rule); }
+  header.page { padding:4.5rem 0 3.5rem; }
+
+  h2 { font-size:1.75rem; font-weight:600; letter-spacing:-.02em; line-height:1.15;
+       text-wrap:balance; margin:4rem 0 1rem; padding-top:2rem; border-top:1px solid var(--rule); }
+  h3 { font-size:1.125rem; font-weight:600; margin:2.5rem 0 .6rem; }
+  p { margin:0 0 1.1rem; text-wrap:pretty; }
+  a { color:var(--accent); text-underline-offset:2px; }
+  a:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:2px; }
+  strong { font-weight:600; }
+  code,.mono { font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; }
+  p code,li code,td code,th code { font-size:.875em; background:var(--surface-alt);
+        padding:.12em .34em; border-radius:3px; border:1px solid var(--rule); }
+  ul,ol { margin:0 0 1.1rem; padding-left:1.3rem; } li { margin-bottom:.5rem; }
+
+  pre { background:var(--surface-alt); border:1px solid var(--rule); border-radius:6px;
+        padding:.95rem 1.1rem; overflow-x:auto; margin:1.25rem 0;
+        font-family:"IBM Plex Mono",monospace; font-size:.8rem; line-height:1.6; color:var(--ink-mid); }
+  pre b { color:var(--accent); font-weight:600; }
+
+  /* ---- router diagram ---- */
+  .diagram { background:var(--surface); border:1px solid var(--rule); border-radius:8px;
+             padding:2rem 1.5rem 1.5rem; margin:2rem 0; box-shadow:var(--shadow); }
+  .kicker { font-size:.7rem; letter-spacing:.13em; text-transform:uppercase;
+            color:var(--ink-muted); font-weight:600; margin:0 0 1.75rem; }
+  .stage { display:flex; flex-direction:column; align-items:center; gap:0; }
+  .node { border:1px solid var(--rule-strong); background:var(--surface-alt);
+          border-radius:6px; padding:.7rem 1.1rem; text-align:center; max-width:24rem; }
+  .node-t { font-size:.9rem; font-weight:600; letter-spacing:-.005em; }
+  .node-s { font-size:.78rem; color:var(--ink-muted); font-family:"IBM Plex Mono",monospace; margin-top:.15rem; }
+  .arrow { width:0; height:1.4rem; border-left:1px solid var(--rule-strong); margin:0; }
+  .arrow.head::after { content:"▼"; display:block; position:relative; top:1.15rem; left:-.34rem;
+                       font-size:.55rem; color:var(--rule-strong); }
+  .router { border-color:var(--accent); background:var(--accent-soft); }
+  .router .node-t { color:var(--accent); }
+  .router .node-s { color:var(--accent); opacity:.85; }
+
+  .branches { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; width:100%; margin:.4rem 0 0; }
+  .branch { border-radius:6px; border:1px solid; padding:.8rem .85rem; text-align:center; }
+  .branch .lbl { font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:600;
+                 letter-spacing:.08em; text-transform:uppercase; display:block; margin-bottom:.3rem; }
+  .branch .cond { font-size:.78rem; line-height:1.4; display:block; margin-bottom:.5rem; color:var(--ink-mid); }
+  .branch .store { font-family:"IBM Plex Mono",monospace; font-size:.7rem;
+                   padding-top:.45rem; border-top:1px dashed currentColor; }
+  .b-sql { border-color:var(--sql); background:var(--sql-soft); color:var(--sql); }
+  .b-vec { border-color:var(--vec); background:var(--vec-soft); color:var(--vec); }
+  .b-hyb { border-color:var(--hyb); background:var(--hyb-soft); color:var(--hyb); }
+  .diagram-note { font-size:.9rem; color:var(--ink-mid); margin:1.5rem 0 0; line-height:1.55; }
+
+  /* ---- tables ---- */
+  .scroll { overflow-x:auto; margin:1.5rem 0; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; min-width:30rem; }
+  th,td { text-align:left; padding:.62rem .85rem; border-bottom:1px solid var(--rule); }
+  th { font-size:.72rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
+       color:var(--ink-muted); border-bottom:1px solid var(--rule-strong); vertical-align:bottom; }
+  td.n,th.n { text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; }
+  tbody tr:last-child td { border-bottom:none; }
+  .win { color:var(--sql); font-weight:600; }
+  .lose { color:var(--bad); font-weight:600; }
+
+  .callout { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--accent);
+             border-radius:0 6px 6px 0; padding:1.1rem 1.35rem; margin:1.75rem 0; font-size:.97rem; }
+  .callout.warn { border-left-color:var(--bad); }
+  .callout p:last-child { margin-bottom:0; }
+
+  ol.steps { list-style:none; counter-reset:s; padding:0; margin:1.5rem 0;
+             display:grid; gap:1px; background:var(--rule); border:1px solid var(--rule);
+             border-radius:6px; overflow:hidden; }
+  ol.steps li { counter-increment:s; background:var(--surface); padding:.85rem 1.1rem;
+                margin:0; display:grid; grid-template-columns:1.9rem 1fr; gap:.75rem; align-items:baseline;
+                font-size:.97rem; }
+  ol.steps li::before { content:counter(s,decimal-leading-zero); font-family:"IBM Plex Mono",monospace;
+                        font-size:.76rem; font-weight:600; color:var(--accent); }
+
+  footer.page { margin-top:4rem; padding-top:2rem; border-top:1px solid var(--rule);
+                font-size:.92rem; color:var(--ink-mid); }
+
+  @media (max-width:36rem) {
+    body { padding:0 1.1rem 4rem; }
+    header.page { padding:3rem 0 2.5rem; }
+    .branches { grid-template-columns:1fr; }
+  }
+  @media (prefers-reduced-motion:reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+
+<header class="page wrap">
+  <p class="eyebrow">Crypto Governance Intelligence · Phase 5</p>
+  <h1>Phase 5, Planned</h1>
+  <p class="lede">Phase 4 ended with a function that returns five relevant chunks. Phase 5 turns that into something that <em>answers</em> — and this is the plan's dense LangGraph paragraph, unpacked.</p>
+  <div class="meta">
+    <span>Planned · not started</span>
+    <span>18 Aug 2026</span>
+    <span>~2 evenings</span>
+    <span>Local · per-query API cost</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <h2>What Phase 5 actually is</h2>
+  <p>Three things a person would recognise:</p>
+  <ul>
+    <li><strong>A dispatcher</strong> that reads your question and decides <em>where the answer lives</em> — the SQL tables, the semantic index, or both.</li>
+    <li><strong>Three fetchers</strong>, one per destination, that go and get the material.</li>
+    <li><strong>A writer</strong> that reads what came back and produces an analyst-quality answer with citations that resolve to real source text.</li>
+  </ul>
+  <p>Wired together as a small graph, so each piece is separately testable and the whole thing has one entry point.</p>
+</main>
+
+<div class="wide">
+  <div class="diagram">
+    <p class="kicker">Query answering — on demand, read path</p>
+    <div class="stage">
+      <div class="node"><span class="node-t">Question</span><span class="node-s">plain text, unlabelled</span></div>
+      <div class="arrow head"></div>
+      <div class="node router"><span class="node-t">Intent router</span><span class="node-s">small model · sees the text, never the corpus</span></div>
+      <div class="arrow head"></div>
+      <div class="branches">
+        <div class="branch b-sql">
+          <span class="lbl">route: sql</span>
+          <span class="cond">counts, filters, dates — “how many Aave proposals passed last quarter?”</span>
+          <span class="store">silver · Iceberg</span>
+        </div>
+        <div class="branch b-vec">
+          <span class="lbl">route: vector</span>
+          <span class="cond">open-ended themes — “what are the arguments against fee switches?”</span>
+          <span class="store">pgvector</span>
+        </div>
+        <div class="branch b-hyb">
+          <span class="lbl">route: hybrid</span>
+          <span class="cond">precise constraint <em>plus</em> qualitative judgment</span>
+          <span class="store">silver → pgvector</span>
+        </div>
+      </div>
+      <div class="arrow head"></div>
+      <div class="node"><span class="node-t">Analyst synthesis</span><span class="node-s">strong model · structural citations</span></div>
+      <div class="arrow head"></div>
+      <div class="node"><span class="node-t">Answer + resolvable sources</span></div>
+    </div>
+    <p class="diagram-note"><strong>The router reads the question and nothing else.</strong> It never touches the corpus — a router that had to query data in order to decide how to query data would be circular and expensive. It sees a sentence, emits one label, and steps aside. That is why it can run on a small cheap model while only synthesis needs a strong one.</p>
+  </div>
+</div>
+
+<main class="wrap">
+  <h2>Why a router at all</h2>
+  <p>Different questions have different <em>shapes</em>, and the shapes need different tools.</p>
+
+  <h3>“How many Aave proposals passed in the last quarter?”</h3>
+  <p>Arithmetic over structured fields. <code>proposal_versions</code> already has <code>proposal_state</code>, <code>voting_end</code> and <code>protocol_name</code> — a <code>SELECT count(*) … WHERE</code> answers it exactly. Semantic search would be a terrible way to count things: it returns five chunks that <em>talk about</em> proposals passing, and counting those gives you five.</p>
+
+  <h3>“What are the arguments against protocol fee switches?”</h3>
+  <p>There is no column for “arguments against”. This is what the embeddings are for.</p>
+
+  <h3>“Which Aave proposals last quarter changed risk parameters, and what did the forum argue about them?”</h3>
+  <p>Both — a date and protocol filter, then the qualitative debate. This is the phase's demo question.</p>
+
+  <h2>The pieces, one at a time</h2>
+
+  <h3>The state object</h3>
+  <p>Every node reads and writes one shared dictionary.</p>
+<pre>class AgentState(TypedDict):
+    messages: <b>Annotated[Sequence[BaseMessage], add_messages]</b>
+    question: str
+    route:    Literal["sql", "vector", "hybrid"]
+    filters:  dict                 # protocol, dates, source — from the router
+    rows:     list[dict]           # what the SQL node found
+    chunks:   list[SearchResult]   # what the vector node found
+    answer:   str
+    citations: list[str]</pre>
+
+  <div class="callout warn">
+    <p><strong>The <code>add_messages</code> annotation is not decoration.</strong> The original blueprint had a docstring where this belongs. Without a reducer LangGraph <em>overwrites</em> <code>messages</code> on each node's return instead of appending — so conversation history silently vanishes and every turn looks like the first.</p>
+  </div>
+
+  <h3>The router node</h3>
+  <p>Input: the question. Output: a label plus any filters it can confidently extract.</p>
+<pre>{"route": "hybrid", "protocol": "aave", "since": "2026-05-01", "source": null}</pre>
+  <p>Small model, temperature 0, JSON-constrained. The filters are a real bonus: Phase 4 measured <code>protocol="aave"</code> taking a failing question from <span class="mono">0/3</span> to <span class="mono">2/3</span>.</p>
+
+  <h3>The SQL node</h3>
+  <p>Translates the question into a query against silver via Trino. Two hard rules:</p>
+  <ul>
+    <li><strong><code>WHERE is_current</code> unless the question is historical.</strong> Silver is SCD2, so without it a proposal edited three times is counted three times.</li>
+    <li><strong>Never let the model emit raw SQL against a live connection.</strong> Constrain it to parameterised templates — count, list, filter-by-date, top-N. A template covers the real question shapes and cannot be talked into <code>DROP TABLE</code>.</li>
+  </ul>
+
+  <h3>The vector node</h3>
+  <p>Calls <code>search()</code> exactly as Phase 4 left it — the layer that already works and is already measured. That is the whole point of having built it standalone first.</p>
+
+  <h3>The hybrid node</h3>
+  <p>Runs both, and the ordering matters: <strong>SQL first, then vector within its results.</strong> Get the 14 Aave proposals from last quarter, then search semantically <em>inside</em> that set — rather than searching everything and hoping the date filter is honoured.</p>
+
+  <h3>The synthesis node</h3>
+  <p>Two things carry over verbatim from the original blueprint because they are genuinely good.</p>
+  <p><strong>The three-dimension structure.</strong> Governance questions have technical, economic and political dimensions, and covering all three is what makes an answer analyst-grade rather than a summary: <em>“this changes the LTV parameter”</em> (technical), <em>“reducing borrowing capacity by ~$40M”</em> (economic), <em>“proposed by the risk service provider over delegate objections”</em> (political).</p>
+  <p><strong>The <code>DATA GAP IDENTIFIED</code> escape hatch.</strong> Phase 4 measured exactly why this matters: one question retrieves a chunk about <em>revenue projections</em> for a question about <em>founder compensation</em>, at a distance no threshold can reject. Synthesis is the last line of defence, and the one component that can actually read the text and notice.</p>
+
+  <h3>Citations that structurally cannot be faked</h3>
+  <p>“Cite your sources” is an instruction, not enforcement. Instead make citations part of the <strong>output contract</strong>, then validate after generation: every marker in the prose must exist in the citation list, and every <code>chunk_id</code> must resolve to a chunk actually retrieved for this question.</p>
+<pre>{
+  "answer": "Aave deprecated oracles for long-tail assets <b>[c1]</b>, which
+             delegates argued would strand positions <b>[c2]</b>.",
+  "citations": [
+    {"marker":"c1", "chunk_id":"…", "document_id":"0xaa68…", "source":"proposal"},
+    {"marker":"c2", "chunk_id":"…", "document_id":"25400",  "source":"forum"}
+  ]
+}</pre>
+  <p>A hallucinated citation fails a lookup rather than reaching the user. That check is a unit test, not a hope.</p>
+
+  <h2>What Phase 4 measured that changes this design</h2>
+  <p>Four findings that should shape Phase 5 rather than be rediscovered inside it.</p>
+
+  <h3>1. Set <code>k</code> by question shape — free, and the largest available win</h3>
+  <p>Thematic misses are a <strong>ranking</strong> problem, not an absence problem:</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Thematic recall</th><th class="n">k=5</th><th class="n">k=10</th><th class="n">k=20</th><th class="n">k=50</th></tr></thead>
+      <tbody><tr><td>documents found ÷ expected</td><td class="n">0.78</td><td class="n">0.83</td><td class="n win">0.94</td><td class="n">1.00</td></tr></tbody>
+    </table>
+  </div>
+  <p>Every expected document is already retrieved; it just sits below the cut. Someone asking <em>“which protocols pay delegates?”</em> expects a list, not five items. The router is the first component that knows a question is thematic, so it is the right place to set <code>k=20</code> while a lookup question keeps <code>k=5</code>. Verified: negatives stay clean at <span class="mono">5/5</span> for k=5, 10 and 20, because the accept/reject decision is computed on the raw top-10 profile regardless of <code>k</code>.</p>
+
+  <h3>2. Use the model as a relevance <em>judge</em>, not a reranker</h3>
+  <p>Measured, on the exact pair no threshold can separate:</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Question</th><th class="n">Top relevance score</th><th class="n">Passages ≥2</th></tr></thead>
+      <tbody>
+        <tr><td><em>“How much is the Aave founder paid?”</em> — should return nothing</td><td class="n win">0</td><td class="n win">0</td></tr>
+        <tr><td><code>theme-delegate-incentives</code> — should return 4 documents</td><td class="n win">3</td><td class="n win">7</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Total rejection and total confidence — a clean split where the distances (<span class="mono">0.451</span> vs <span class="mono">0.458</span>) have the two in the <em>wrong order</em>.</p>
+  <p>But the same model <strong>reranking for order made thematic recall worse</strong> (<span class="mono">0.78 → 0.72</span>): it optimises “does this passage answer the question”, so it prefers one deeply detailed protocol over the spread of documents a cross-protocol question needs. <strong>Judge, don't reorder.</strong> Measured cost ~<span class="mono">$0.0004</span>/query.</p>
+
+  <h3>3. Protocol filtering belongs to the router</h3>
+  <p>Phase 4 tested whether chunk text alone could fix protocol bleed. It could not. The filter works — <span class="mono">0/3 → 2/3</span> — but applying it needs the question parsed, and a wrong guess excludes the right answer entirely. That is a decision requiring intent, which is what the router produces.</p>
+
+  <h3>4. Routing introduces a brand-new error source</h3>
+  <div class="callout warn">
+    <p>Today a question is “thematic” because a human labelled it. In Phase 5 it is thematic because a model guessed. <strong>A misrouted question gets the wrong <code>k</code>, the wrong store, possibly the wrong protocol filter</strong> — and every Phase 4 number was measured without that error existing. Left unmeasured, misclassification is precisely the kind of invisible failure this project keeps finding.</p>
+  </div>
+
+  <h2>The routing eval set — build it before the router</h2>
+  <p>Fifteen questions labelled with the branch they <em>should</em> take. Same method as Phase 4: write the measurement first, so “the router works” is a number.</p>
+  <p>It is genuinely new work, not a relabelling. <strong>The Phase 4 eval set contains no SQL-shaped questions at all</strong> — no counts, no date ranges, no “how many” — because Phase 4 had no SQL branch to test. The two taxonomies are different axes:</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th></th><th>Phase 4 kinds</th><th>Phase 5 routes</th></tr></thead>
+      <tbody>
+        <tr><td>Asks</td><td>What is it about, and is it answerable?</td><td>Which store can answer it?</td></tr>
+        <tr><td>Values</td><td><code>lookup</code> · <code>thematic</code> · <code>cross_source</code> · <code>negative</code></td><td><code>sql</code> · <code>vector</code> · <code>hybrid</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Target shape: 5 SQL, 5 vector, 5 hybrid, with deliberate near-misses — <em>“how many proposals mention risk parameters”</em> looks like a count but needs semantics, and belongs in hybrid. Those boundary cases are where routing accuracy is actually decided.</p>
+
+  <h2>Build order</h2>
+  <ol class="steps">
+    <li><span><strong>Routing eval set</strong> — 15 labelled questions. Measurement first.</span></li>
+    <li><span><strong>State + graph skeleton</strong> — nodes returning canned values, <code>.compile()</code>, terminal edges. Prove the graph runs end to end before any node is real.</span></li>
+    <li><span><strong>Router node</strong>, measured against the eval set. Iterate the prompt until ≥80%.</span></li>
+    <li><span><strong>Vector node</strong> — thin wrapper over <code>search()</code>, with <code>k</code> from the route.</span></li>
+    <li><span><strong>SQL node</strong> — parameterised templates over silver, <code>is_current</code> enforced.</span></li>
+    <li><span><strong>Hybrid node</strong> — SQL first, vector within its results.</span></li>
+    <li><span><strong>Synthesis node</strong> + the citation validator.</span></li>
+    <li><span><strong><code>gov ask "…"</code></strong> — terminal chat, mirroring <code>gov search</code>.</span></li>
+    <li><span><strong>Re-run <code>make eval</code></strong> to confirm Phase 4 retrieval has not regressed.</span></li>
+  </ol>
+  <p>Steps 2 and 3 are where the blueprint's shipped code failed outright — it never called <code>.compile()</code>, routed to three undefined nodes, and had no <code>END</code> edge, so the module raised on import and the API never started. Doing the skeleton first makes that class of error impossible to carry forward.</p>
+
+  <h2>How we will know it works</h2>
+  <p><strong>Exit criteria:</strong> the router selects the correct branch on <strong>≥80%</strong> of the 15-query routing set, and <strong>every factual claim carries a resolvable citation</strong> — enforced by the validator, so a hallucinated <code>chunk_id</code> fails a lookup rather than reaching a user.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Test</th><th>Guards against</th></tr></thead>
+      <tbody>
+        <tr><td><code>messages</code> accumulate across turns</td><td>the missing-reducer bug, which silently erases history</td></tr>
+        <tr><td>the graph compiles and every edge terminates</td><td>the blueprint's import-time crash</td></tr>
+        <tr><td>a hallucinated <code>chunk_id</code> is rejected</td><td>citations that look right and point nowhere</td></tr>
+        <tr><td>SQL templates always constrain <code>is_current</code></td><td>SCD2 double-counting edited documents</td></tr>
+        <tr><td>a routed question reaches only its own store</td><td>a “vector” question quietly running SQL</td></tr>
+        <tr><td><code>DATA GAP</code> fires when the judge scores everything 0</td><td>confident answers built from irrelevant text</td></tr>
+        <tr><td><code>make eval</code> still passes</td><td>Phase 5 silently regressing Phase 4 retrieval</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Cost — and the first thing that can run up a bill</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Component</th><th>Model</th><th>Rough cost</th></tr></thead>
+      <tbody>
+        <tr><td>Router</td><td>small, cheap</td><td>negligible — one sentence in, JSON out</td></tr>
+        <tr><td>Relevance judge</td><td>small, cheap</td><td>~$0.0004 <em>(measured)</em></td></tr>
+        <tr><td>Synthesis</td><td>strong</td><td>the dominant per-query cost</td></tr>
+        <tr><td>Retrieval</td><td>—</td><td>one embedding call, fractions of a cent</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout">
+    <p>Embeddings were a <strong>one-time</strong> corpus cost. LLM calls are <strong>per question</strong>, so a loop or a retry storm is the first thing in this project that can run up a bill. The existing provider spend cap stays essential.</p>
+  </div>
+
+  <h2>Open decisions</h2>
+  <ul>
+    <li><strong>Which model for synthesis.</strong> Deliberately deferred — it is a one-client swap, and the router/judge economics do not depend on it.</li>
+    <li><strong>Whether the relevance judge is its own node</strong> or folded into synthesis. Separate is cleaner to test and is the component with a measured number attached; folding it in saves a call. Leaning separate.</li>
+    <li><strong>Conversation memory scope.</strong> <code>add_messages</code> makes multi-turn possible; whether Phase 5 exposes follow-ups or stays single-shot is a product decision, not a technical one.</li>
+  </ul>
+
+  <footer class="page">
+    <p><strong>What this phase does not do:</strong> no FastAPI (Phase 6), no dashboard, no scheduling, no contract source. Phase 5 ends at a terminal command that answers a governance question with citations — the point at which the plan notes <em>“working product from here.”</em></p>
+    <p>Companion documents: <code>phase-4-explained.md</code> defines every metric quoted here · <code>phase-4-retrieval.md</code> records the retrieval decisions · <code>implementation-plan.md</code> holds all twelve phases.</p>
+  </footer>
+</main>
