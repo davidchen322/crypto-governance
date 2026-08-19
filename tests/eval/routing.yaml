@@ -1,0 +1,117 @@
+# Routing eval set — 15 questions labelled with the branch they SHOULD take.
+#
+# Written BEFORE the router, so "the router works" is a number rather than an impression.
+# Same discipline as tests/eval/questions.yaml, different axis:
+#
+#   questions.yaml  asks  "what is this about, and is it answerable?"  (lookup/thematic/...)
+#   routing.yaml    asks  "which store can answer it?"                 (sql/vector/hybrid)
+#
+# The Phase 4 eval set contains NO sql-shaped questions — no counts, no date ranges — because
+# Phase 4 had no SQL branch. So this is new work, not a relabelling.
+#
+# route:
+#   sql     answerable from structured columns alone (counts, filters, dates, ordering)
+#   vector  needs the meaning of prose; no column holds the answer
+#   hybrid  a structured constraint AND a qualitative judgement
+#
+# scope:  one | all   — for vector/hybrid questions, whether the answer spans protocols.
+#         Measured in Phase 4: getting this wrong costs documents in BOTH directions.
+#
+# Grounded in the real corpus: 125 current proposals (2022-10-13 .. 2026-08-11), 328 forum
+# posts, 5 protocols, aave alone has active proposals.
+
+- id: route-count-aave-proposals
+  question: How many Aave proposals are currently active?
+  route: sql
+  why: pure count over proposal_state; semantic search would return five chunks that mention activity
+
+- id: route-count-by-protocol
+  question: How many proposals does each protocol have in the corpus?
+  route: sql
+  why: group-by over a column, no prose involved
+
+- id: route-most-voted
+  question: Which proposal received the most votes?
+  route: sql
+  why: ORDER BY vote_count DESC LIMIT 1 — an ordering over a numeric column
+
+- id: route-oldest-proposal
+  question: What is the earliest proposal we have on record?
+  route: sql
+  why: min(proposal_created); a date extreme, not a topic
+
+- id: route-forum-volume
+  question: Which protocol has the most forum discussion?
+  route: sql
+  why: count over forum_posts grouped by protocol
+
+- id: route-fee-arguments
+  question: What arguments have been made against turning on protocol fees?
+  route: vector
+  scope: all
+  why: no column holds "arguments against"; spans protocols
+
+- id: route-oracle-deprecation
+  question: Why were Chainlink price feeds deprecated for long-tail assets?
+  route: vector
+  scope: all
+  why: >-
+    reasoning lives in proposal prose. Scope is "all" even though only Aave has such
+    proposals — the question names no protocol, and the router reads ONLY the question.
+    Labelling this "one" demanded corpus knowledge the router structurally cannot have.
+    The rule it violated — scope="one" requires a protocol identifiable from the question
+    text alone.
+
+- id: route-delegate-programs
+  question: Which protocols are running or debating programs to pay delegates?
+  route: vector
+  scope: all
+  why: the canonical fan-out shape — asks which protocols, so absences are part of the answer
+
+- id: route-security-council
+  question: What is the ENS Security Council and what powers does it hold?
+  route: vector
+  scope: one
+  why: definitional, single protocol, answered by prose
+
+- id: route-treasury-idle-funds
+  question: What are DAOs doing with idle treasury funds?
+  route: vector
+  scope: all
+  why: cross-protocol theme; measured in Phase 4 to need fan-out rather than a bigger k
+
+- id: route-aave-risk-last-quarter
+  question: Which Aave proposals in the last quarter changed risk parameters, and what did the forum argue about them?
+  route: hybrid
+  scope: one
+  why: the phase demo — date filter and protocol filter (sql) plus qualitative debate (vector)
+
+- id: route-recent-uniswap-fees
+  question: What has Uniswap proposed about fees since January 2026?
+  route: hybrid
+  scope: one
+  why: a date bound is structured, "about fees" is not
+
+- id: route-closed-proposals-risk
+  question: Among closed proposals, which ones dealt with reducing risk exposure?
+  route: hybrid
+  scope: all
+  why: proposal_state is a column, "reducing risk exposure" is semantic
+
+- id: route-count-mentioning-risk
+  question: How many proposals mention risk parameters?
+  route: hybrid
+  scope: all
+  why: DELIBERATE NEAR-MISS. Looks like a count, but "mention risk parameters" cannot be
+       evaluated by a column — it needs retrieval first, then counting
+
+- id: route-active-concerns
+  question: What concerns have been raised about the currently active proposals?
+  route: hybrid
+  scope: all
+  why: >-
+    DELIBERATE NEAR-MISS. "currently active" is a column filter; "concerns raised" exists
+    only in forum prose. Replaces an earlier item ("What are the currently active proposals
+    about?") which had two defensible answers — title IS a column, so sql could genuinely
+    answer it. An item with no single right answer cannot discriminate a good router from a
+    bad one, so it was sharpened rather than scored.

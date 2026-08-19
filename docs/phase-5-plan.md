@@ -83,9 +83,9 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     question: str
     route: Literal["sql", "vector", "hybrid"]
-    filters: dict          # protocol, date range, source — extracted by the router
-    rows: list[dict]       # what the SQL node found
-    chunks: list[SearchResult]   # what the vector node found
+    filters: dict  # protocol, date range, source — extracted by the router
+    rows: list[dict]  # what the SQL node found
+    chunks: list[SearchResult]  # what the vector node found
     answer: str
     citations: list[str]
 ```

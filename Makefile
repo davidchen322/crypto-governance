@@ -76,6 +76,12 @@ search: install ## Semantic search from the shell (make search Q="oracle depreca
 backfill-metadata: install ## Fill title/document_date on embeddings from silver (no re-embed)
 	$(PY) scripts/backfill_citation_metadata.py $(ARGS)
 
+ask: install ## Answer a governance question with citations (make ask Q="...")
+	$(VENV)/bin/gov ask "$(Q)" $(ARGS)
+
+eval-routing: install ## Score the intent router against the routing eval set
+	$(PY) tests/eval/score_routing.py $(ARGS)
+
 sql: ## Interactive Trino shell — fast, use this for exploring
 	docker compose exec -it trino trino
 

@@ -1,0 +1,249 @@
+<title>Phase 5, Built</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground:#F7F8FA; --surface:#FFFFFF; --surface-alt:#F0F3F6;
+    --ink:#16202B; --ink-mid:#3D4C5A; --ink-muted:#64727F;
+    --rule:#DDE3E9; --rule-strong:#C3CDD6;
+    --accent:#A65A11; --accent-soft:#F2E3D2;
+    --good:#0F766E; --good-soft:#D7E9E6;
+    --bad:#9F3A4A;  --bad-soft:#F0DCDF;
+    --shadow:0 1px 2px rgba(22,32,43,.05), 0 8px 24px -16px rgba(22,32,43,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0E151C; --surface:#141D26; --surface-alt:#1A2531;
+      --ink:#E5EAEF; --ink-mid:#B6C2CD; --ink-muted:#8A99A7;
+      --rule:#253442; --rule-strong:#35485A;
+      --accent:#E8A33D; --accent-soft:#3A2C17;
+      --good:#4FB3A5; --good-soft:#16302E;
+      --bad:#D97A8A;  --bad-soft:#341E23;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0E151C; --surface:#141D26; --surface-alt:#1A2531;
+    --ink:#E5EAEF; --ink-mid:#B6C2CD; --ink-muted:#8A99A7;
+    --rule:#253442; --rule-strong:#35485A;
+    --accent:#E8A33D; --accent-soft:#3A2C17;
+    --good:#4FB3A5; --good-soft:#16302E;
+    --bad:#D97A8A;  --bad-soft:#341E23;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink);
+    font-family:"Source Serif 4",Georgia,serif; font-size:1.0625rem; line-height:1.65;
+    margin:0; padding:0 1.5rem 6rem; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:46rem; margin:0 auto; }
+  .wide { max-width:62rem; margin:0 auto; }
+  h1,h2,h3,.eyebrow,th,.kicker,.bug-n,.bug-t { font-family:Archivo,"Helvetica Neue",Arial,sans-serif; }
+
+  .eyebrow { font-size:.75rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+             color:var(--accent); margin:0 0 1.25rem; }
+  h1 { font-size:clamp(2.4rem,6vw,3.6rem); font-weight:700; letter-spacing:-.032em;
+       line-height:1.02; text-wrap:balance; margin:0 0 1.25rem; }
+  .lede { font-size:1.25rem; line-height:1.5; color:var(--ink-mid); margin:0 0 2rem; text-wrap:pretty; }
+  .meta { font-family:"IBM Plex Mono",monospace; font-size:.78rem; color:var(--ink-muted);
+          display:flex; flex-wrap:wrap; gap:.5rem 1.5rem; padding-top:1.5rem; border-top:1px solid var(--rule); }
+  header.page { padding:4.5rem 0 3.5rem; }
+  h2 { font-size:1.75rem; font-weight:600; letter-spacing:-.02em; line-height:1.15;
+       text-wrap:balance; margin:4rem 0 1rem; padding-top:2rem; border-top:1px solid var(--rule); }
+  h3 { font-size:1.125rem; font-weight:600; margin:2.5rem 0 .6rem; }
+  p { margin:0 0 1.1rem; text-wrap:pretty; }
+  a { color:var(--accent); text-underline-offset:2px; }
+  a:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:2px; }
+  code,.mono { font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; }
+  p code,li code,td code { font-size:.875em; background:var(--surface-alt);
+      padding:.12em .34em; border-radius:3px; border:1px solid var(--rule); }
+  ul,ol { margin:0 0 1.1rem; padding-left:1.3rem; } li { margin-bottom:.5rem; }
+  pre { background:var(--surface-alt); border:1px solid var(--rule); border-radius:6px;
+        padding:.95rem 1.1rem; overflow-x:auto; margin:1.25rem 0;
+        font-family:"IBM Plex Mono",monospace; font-size:.79rem; line-height:1.6; color:var(--ink-mid); }
+  pre b { color:var(--accent); font-weight:600; }
+
+  .scroll { overflow-x:auto; margin:1.5rem 0; }
+  table { border-collapse:collapse; width:100%; font-size:.92rem; min-width:30rem; }
+  th,td { text-align:left; padding:.62rem .85rem; border-bottom:1px solid var(--rule); }
+  th { font-size:.72rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
+       color:var(--ink-muted); border-bottom:1px solid var(--rule-strong); vertical-align:bottom; }
+  td.n,th.n { text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; }
+  tbody tr:last-child td { border-bottom:none; }
+  .pass { color:var(--good); font-weight:600; }
+
+  /* bug ledger — the centrepiece */
+  .ledger { display:grid; gap:1rem; margin:2rem 0; }
+  .bug { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--bad);
+         border-radius:0 7px 7px 0; padding:1.15rem 1.35rem; box-shadow:var(--shadow); }
+  .bug-h { display:flex; align-items:baseline; gap:.7rem; margin-bottom:.5rem; flex-wrap:wrap; }
+  .bug-n { font-family:"IBM Plex Mono",monospace; font-size:.72rem; font-weight:600;
+           color:var(--bad); background:var(--bad-soft); padding:.16rem .45rem; border-radius:3px; }
+  .bug-t { font-size:1.02rem; font-weight:600; letter-spacing:-.008em; }
+  .bug p { margin:0 0 .7rem; font-size:.96rem; }
+  .bug p:last-child { margin-bottom:0; }
+  .symptom { font-family:"IBM Plex Mono",monospace; font-size:.78rem; background:var(--surface-alt);
+             border:1px solid var(--rule); border-radius:4px; padding:.55rem .75rem;
+             color:var(--ink-mid); margin:0 0 .7rem; overflow-x:auto; }
+  .fix { font-size:.96rem; }
+  .fix::before { content:"FIX  "; font-family:"IBM Plex Mono",monospace; font-size:.68rem;
+                 font-weight:600; letter-spacing:.1em; color:var(--good); }
+
+  .callout { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--accent);
+             border-radius:0 6px 6px 0; padding:1.1rem 1.35rem; margin:1.75rem 0; font-size:.97rem; }
+  .callout.warn { border-left-color:var(--bad); }
+  .callout p:last-child { margin-bottom:0; }
+
+  footer.page { margin-top:4rem; padding-top:2rem; border-top:1px solid var(--rule);
+                font-size:.92rem; color:var(--ink-mid); }
+  @media (max-width:36rem) { body{padding:0 1.1rem 4rem;} header.page{padding:3rem 0 2.5rem;} }
+  @media (prefers-reduced-motion:reduce) { *{animation:none!important;transition:none!important;} }
+</style>
+
+<header class="page wrap">
+  <p class="eyebrow">Crypto Governance Intelligence · Phase 5</p>
+  <h1>Phase 5, Built</h1>
+  <p class="lede">The agent answers governance questions with citations that resolve. Getting there took seven bugs — none of which raised an exception, and every one of which produced fluent, confident, wrong output.</p>
+  <div class="meta">
+    <span>18 Aug 2026</span><span>routing 0.93</span><span>64 new tests</span>
+    <span>Phase 4 unregressed</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <h2>Headline</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Exit criterion</th><th class="n">Target</th><th class="n">Measured</th></tr></thead>
+      <tbody>
+        <tr><td>Router selects the correct branch</td><td class="n">≥ 0.80</td><td class="n pass">0.93</td></tr>
+        <tr><td>Scope (one protocol / all) correct</td><td class="n">—</td><td class="n pass">1.00</td></tr>
+        <tr><td>Every claim carries a resolvable citation</td><td class="n">enforced</td><td class="n pass">validator</td></tr>
+        <tr><td>Phase 4 retrieval not regressed</td><td class="n">unchanged</td><td class="n pass">micro 0.83</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>The demo</h2>
+<pre>$ gov ask "Which Aave proposals in the last quarter changed risk parameters,
+           and what did the forum argue about them?" --explain
+
+  route: <b>hybrid/one</b>  {'protocol': 'aave', 'since': '2026-05-01'}
+
+  In the last quarter, several Aave proposals changed risk parameters. '[ARFC] Low
+  Adoption Asset Deprecation on Aave V3' aimed to reduce Aave's risk surface by
+  deprecating assets whose usage had declined <b>[c2]</b>. '[ARFC] Umbrella Parameter
+  Update' proposed to sunset GHO by reducing target liquidity to zero <b>[c3]</b>.
+  '[ARFC] Oracle Deprecation for Long-tail Assets' recommended deprecating Chainlink
+  price feeds, affecting $6.76M supply and $4.29M debt <b>[c4]</b>. Forum discussion
+  highlighted the need to manage risk and optimise resources <b>[c0]</b>.
+
+  sources
+   [c2] aave proposal  [ARFC] Low Adoption Asset Deprecation on Aave V3
+   [c3] aave proposal  [ARFC] Umbrella Parameter Update: Target Liquidity…
+   [c4] aave proposal  [ARFC] Oracle Deprecation for Long-tail Assets…
+   [c0] aave forum     AL Development Update | July 2026
+
+  ran template 'list_proposals'; searched aave with k=20; narrowed proposals to the
+  SQL result (19/19 chunks kept, 6 of them forum)</pre>
+  <p>A genuine hybrid answer: date and protocol bounds from SQL, qualitative material from the vector store, four resolving citations, and cross-source evidence — three proposals plus a forum thread.</p>
+  <p><strong>It did not look like that on the first run.</strong></p>
+</main>
+
+<div class="wide">
+  <h2 class="wrap" style="max-width:46rem;margin-left:auto;margin-right:auto;">Seven bugs that shipped fluent, confident, wrong output</h2>
+  <div class="ledger">
+    <div class="bug">
+      <div class="bug-h"><span class="bug-n">01</span><span class="bug-t">Every citation was unresolvable</span></div>
+      <p>The prompt showed passages as <code>[0] ref=proposal:0xaa68…#3</code> and asked the model to echo the ref. It cited <code>"0"</code> — the bracket index. The answer was authoritative, well-structured, and every single citation failed to resolve.</p>
+      <p class="fix">The model no longer supplies a source identity at all. Passages are labelled <code>[c0]</code>, <code>[c1]</code>; it selects a marker from that list, so a fabricated citation fails a dictionary lookup. Asking a model to reproduce an opaque string is avoidable when it could just pick a label.</p>
+    </div>
+
+    <div class="bug">
+      <div class="bug-h"><span class="bug-n">02</span><span class="bug-t">Hybrid narrowing could never happen</span></div>
+      <p class="symptom">SQL returned 2 titled row(s) but no ids, so no narrowing</p>
+      <p><code>list_proposals</code> selected <code>title</code> but not <code>proposal_id</code>, so the hybrid node had no identities to narrow to. The date filter was decorative.</p>
+      <p class="fix">Select <code>proposal_id</code>. Visible only because the node reports what it did.</p>
+    </div>
+
+    <div class="bug">
+      <div class="bug-h"><span class="bug-n">03</span><span class="bug-t">The router excluded half the evidence it was asked for</span></div>
+      <p>For <em>“…and what did the forum argue about them?”</em> the router set <code>source: "proposal"</code>. That excluded every forum post — while the answer went on to describe “forum discussions”.</p>
+      <p class="fix">A question mentioning both sources must leave <code>source</code> null; setting it removes the other half of the evidence outright.</p>
+    </div>
+
+    <div class="bug">
+      <div class="bug-h"><span class="bug-n">04</span><span class="bug-t">“The last quarter” resolved to 2023</span></div>
+      <p class="symptom">since: 2023-07-01     ← on a corpus whose newest proposal is Aug 2026</p>
+      <p>The router had no notion of <em>today</em>, so it invented a plausible-looking date.</p>
+      <p class="fix">Interpolate today's date into the prompt. A live test asserts the resolved year is within one year of now.</p>
+    </div>
+
+    <div class="bug">
+      <div class="bug-h"><span class="bug-n">05</span><span class="bug-t">Narrowing deleted all forum evidence</span></div>
+      <p class="symptom">"specific arguments from the forum are not provided in the evidence"</p>
+      <p>Restricting vector results to the SQL result's ids sounds right — but templates query <code>proposal_versions</code>, so those are <em>proposal</em> ids and <strong>no forum topic can ever match one</strong>. Narrowing by that set silently deleted every forum chunk, for a question that asked precisely for them.</p>
+      <p class="fix">Narrow only the source the constraint ranged over. Proposals are filtered by the id set; forum chunks pass through.</p>
+    </div>
+
+    <div class="bug">
+      <div class="bug-h"><span class="bug-n">06</span><span class="bug-t">Counting questions refused to answer</span></div>
+      <p class="symptom">route: sql · rows: 5 · answer: "DATA GAP IDENTIFIED"</p>
+      <p>A pure-SQL question routed correctly, ran the right template, got the right rows — and refused. The citation contract was built around text passages and demanded a marker on every claim. With no passages, the model correctly concluded it had nothing citable.</p>
+      <p class="fix">Structured rows are authoritative and need <strong>no</strong> marker — their provenance is the query. A design gap, not a prompt tweak: one provenance model applied to two branches.</p>
+    </div>
+
+    <div class="bug">
+      <div class="bug-h"><span class="bug-n">07</span><span class="bug-t">Answers claimed truncation that never happened</span></div>
+      <p><code>_snippet</code> compared <code>len(" ".join(words))</code> against summed line lengths. That loses one space per line break, so <strong>every multi-line text</strong> was marked <code>…</code>. Harmless in a search listing; on an answer it implies the analyst said more than is shown.</p>
+      <p class="fix">Track truncation explicitly, pinned by a test asserting content round-trips unchanged.</p>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+  <h2>Two eval-set errors, found by running it</h2>
+  <p>The routing set was written before the router — which is the point — but writing a benchmark is itself error-prone, and the first run exposed two bad <em>items</em> rather than two bad answers.</p>
+  <div class="callout warn">
+    <p><strong>My label was wrong.</strong> I labelled <em>“Why were Chainlink price feeds deprecated for long-tail assets?”</em> as <code>scope: one</code>, reasoning it is an Aave thread. But the question names no protocol — for the router to know that, it would have to read the corpus, which it must never do. The label demanded knowledge the router structurally cannot have.</p>
+    <p>Rule now written down and enforced by a test across the whole set: <strong><code>scope: one</code> requires a protocol identifiable from the question text alone.</strong></p>
+  </div>
+  <div class="callout warn">
+    <p><strong>The item was ambiguous.</strong> <em>“What are the currently active proposals about?”</em> was labelled hybrid — but <code>title</code> <strong>is</strong> a column, so <code>SELECT title WHERE proposal_state='active'</code> genuinely answers it. Two defensible answers means the item cannot discriminate a good router from a bad one. Replaced with one testing the same boundary unambiguously.</p>
+  </div>
+  <p>Neither was fitting the test to the model: one label contradicted the router's own contract, the other had no single correct answer.</p>
+
+  <h2>Decisions worth recording</h2>
+
+  <h3>The router emits scope, not just route</h3>
+  <p>The plan's three routes answer <em>which store</em>. Phase 4 showed that is not enough — a thematic question also needs a <em>width</em>, and getting it wrong regresses in both directions: fan-out on a single-protocol question loses documents (4/4 → 3/4), while a flat search on a cross-protocol one misses documents no <code>k</code> recovers.</p>
+
+  <h3>Retrieval disables the cutoffs; the judge decides</h3>
+  <p>Phase 4 fitted the relevance constants on <strong>unfiltered</strong> searches. Applying a protocol filter shrinks the candidate pool and narrows the gap for reasons unrelated to answerability. Rather than re-fit per filter combination, nodes retrieve with cutoffs off and the relevance judge decides.</p>
+  <p>Backed by measurement: on the one pair no threshold separates (0.451 unanswerable versus 0.458 answerable — in the <em>wrong order</em>), judging scored 0 versus 3. The same model <em>reranking for order</em> made thematic recall worse (0.78 → 0.72), so it judges and does not reorder.</p>
+
+  <h3>The model picks templates, never writes SQL</h3>
+  <p>Six parameterised templates; the model chooses a name and typed parameters. Every value is NULL, a clamped integer, or a validated enum. Injection attempts are <em>rejected</em>, not escaped. Every template is asserted to constrain <code>is_current</code>, with a guard in <code>render()</code> so a future template that forgets it fails loudly.</p>
+
+  <h2>Known limitations</h2>
+  <ul>
+    <li><strong>One routing miss remains (0.93).</strong> <code>route-active-concerns</code> drops the “currently active” constraint. Deliberately not chased — tuning a prompt against the 15th item of a 15-item set is exactly the overfitting this project keeps catching.</li>
+    <li><strong><code>is_current</code> cannot currently be demonstrated.</strong> Silver holds <strong>0 superseded rows</strong> — the corpus was harvested once and nothing changed. The test <em>skips explicitly</em> with that message rather than passing vacuously.</li>
+    <li><strong>The judge costs a call per query</strong> (~$0.0004). LLM calls are per question, unlike the one-time embedding cost, so the provider spend cap stays essential.</li>
+    <li><strong>Multi-turn is possible but unused.</strong> <code>add_messages</code> accumulates correctly (proven by test); <code>gov ask</code> is single-shot.</li>
+  </ul>
+
+  <h2>What this says about method</h2>
+  <p>Every one of the seven bugs was found by <strong>running the thing and reading the output carefully</strong>, not by a test failing. The tests came after, to stop them returning. Two patterns recur:</p>
+  <div class="callout">
+    <p><strong>Provenance is where the interesting failures live.</strong> Three of the seven — unresolvable citations, deleted forum evidence, refused counting questions — were about <em>where a claim came from</em> rather than whether it was right. Retrieval quality gets measured obsessively; provenance quietly did not, until a validator was pointed at it.</p>
+    <p><strong>A guard that reports its reasoning beats one that silently succeeds.</strong> The narrowing bug was visible only because the node writes a <code>retrieval_note</code>; the citation bug only because the validator names what failed to resolve. Both would otherwise have looked like slightly thin answers.</p>
+  </div>
+
+  <footer class="page">
+    <p><strong>Next — Phase 6, the FastAPI delivery layer.</strong> Two carried items: use <code>await agent_workflow.ainvoke(...)</code> rather than a sync <code>.invoke()</code> inside <code>async def</code> (the blueprint got this wrong, and a blocked event loop is invisible until load); and grow the routing eval set, since fifteen questions found two of their own labelling errors.</p>
+    <p>Companions: <code>phase-5-plan.md</code> is the plan this follows · <code>phase-4-explained.md</code> defines every metric quoted here.</p>
+  </footer>
+</main>
