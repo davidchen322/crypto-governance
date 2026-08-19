@@ -276,6 +276,13 @@ The ones carrying weight:
 Also caught by an existing Phase 0 test: `ROUTER_MODEL` and `SYNTHESIS_MODEL` were read in code
 but absent from `.env.example`. That guard has now paid for itself twice.
 
+**And one it did not catch.** `langgraph` was installed by hand into the local venv and was
+absent from `pyproject.toml` for the entire build — a fresh clone would have failed at import
+with nothing in the repo explaining why. `pip install -e .` succeeding locally proves nothing
+when the local venv already has the package. Fixed, verified against a throwaway virtualenv,
+and pinned by a new guard (`test_every_third_party_import_is_a_declared_dependency`) so the
+same class of omission fails the build rather than the next clone.
+
 ---
 
 ## What this says about method

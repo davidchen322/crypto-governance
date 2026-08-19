@@ -162,3 +162,41 @@ def test_compose_pins_no_container_names():
     compose = (REPO / "docker-compose.yml").read_text()
     pinned = re.findall(r"^\s*container_name:\s*(\S+)", compose, re.M)
     assert not pinned, f"container_name blocks running a second project: {pinned}"
+
+
+def test_every_third_party_import_is_a_declared_dependency():
+    """The 'works on my machine' guard for packages rather than env vars.
+
+    Phase 5 was written against langgraph installed by hand into the local venv; it was
+    absent from pyproject.toml for the whole build, so a fresh clone would have failed at
+    import with nothing in the repo explaining why. `pip install -e .` succeeding locally
+    proves nothing when the local venv already has the package."""
+    import tomllib
+
+    declared = tomllib.loads((REPO / "pyproject.toml").read_text())["project"]["dependencies"]
+    names = {d.split(">")[0].split("=")[0].split("[")[0].strip().lower() for d in declared}
+    # Distribution name -> the module it provides, where they differ.
+    provides = {"psycopg[binary]": "psycopg", "pyyaml": "yaml", "langgraph": "langgraph"}
+    names |= {v for k, v in provides.items() if k.split("[")[0] in names}
+
+    third_party = {
+        "boto3",
+        "psycopg",
+        "requests",
+        "yaml",
+        "tiktoken",
+        "langgraph",
+        "langchain_core",
+    }
+    used: set[str] = set()
+    for directory in SOURCE_DIRS:
+        for path in (REPO / directory).rglob("*.py"):
+            text = path.read_text()
+            for module in third_party:
+                if f"import {module}" in text or f"from {module}" in text:
+                    used.add(module)
+
+    # langchain_core arrives as a langgraph dependency; declaring langgraph covers it.
+    covered = names | ({"langchain_core"} if "langgraph" in names else set())
+    missing = sorted(used - covered)
+    assert not missing, f"imported in code but not declared in pyproject.toml: {missing}"

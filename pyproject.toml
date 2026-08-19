@@ -9,6 +9,8 @@ dependencies = [
     "requests>=2.31",
     "pyyaml>=6.0",
     "tiktoken>=0.7",
+    # Phase 5. langchain-core comes with it and supplies BaseMessage/add_messages.
+    "langgraph>=0.2",
 ]
 
 [project.scripts]
