@@ -19,8 +19,9 @@ REPO = Path(__file__).resolve().parent.parent
 ENV_REF = re.compile(r"""os\.(?:getenv\(|environ\.get\(|environ\[)\s*["']([A-Z][A-Z0-9_]*)["']""")
 
 # Application code only. Tests carry their own local defaults and are not part of the
-# contract that .env.example documents.
-SOURCE_DIRS = ("ai_agent", "backend_api", "config", "data_pipeline")
+# contract that .env.example documents. `dags` joined Phase 7 — DAG code reads env vars
+# (SPARK_CONTAINER_NAME) exactly like every other application directory here.
+SOURCE_DIRS = ("ai_agent", "backend_api", "config", "data_pipeline", "dags")
 
 
 def _tracked_files() -> list[str]:

@@ -495,8 +495,14 @@ Enough variety to prove the system generalizes, few enough to stay debuggable.
 routing is cheap, synthesis is not. Whether synthesis runs on OpenAI or Claude is a swap of one
 client, so this can stay undecided until Phase 5.
 
-**Cloud target.** Only matters at Phase 11, but it shapes whether Phase 7 uses Airflow-the-product
-or something MWAA-compatible. Safe to defer.
+**Cloud target — settled 27 Aug 2026.** AWS. This was flagged as shaping "whether Phase 7 uses
+Airflow-the-product or something MWAA-compatible" — it does, and `docs/phase-7-plan.md`'s AWS
+section works through the consequence in detail: most of Phase 7's design ports to Amazon MWAA
+as configuration, except the Spark-submission step (local `docker exec` into a sibling
+container has no equivalent in a managed, serverless environment, and needs a real rewrite to
+`EmrServerlessStartJobRunOperator` at Phase 11). Full deployment specifics — Terraform, IAM,
+VPC layout, actual cost comparison — remain Phase 11's job; this only records the target so
+Phase 7 doesn't design around an assumption Phase 11 would have to undo.
 
 ---
 

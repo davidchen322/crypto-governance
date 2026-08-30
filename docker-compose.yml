@@ -12,6 +12,58 @@
 
 name: crypto-gov
 
+# Shared Airflow config (Phase 7), referenced via `<<: *airflow-common` from each Airflow
+# service below. A top-level extension field (the `x-` prefix), not a Compose-specific
+# feature — YAML anchors are document-global regardless of nesting, but `x-` keys are the
+# part Compose itself knows to ignore rather than mistake for a fourth service.
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: docker/airflow/Dockerfile
+  image: crypto-gov/airflow:2.10.3
+  depends_on:
+    postgres:
+      condition: service_healthy
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/app/dags
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: >-
+      postgresql+psycopg2://${POSTGRES_USER:-engineer}:${POSTGRES_PASSWORD:-localdev}@postgres:5432/${POSTGRES_AIRFLOW_DB:-airflow}
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-local-dev-only-not-a-real-secret}
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+    # PYTHONPATH is what makes `dags/`, `data_pipeline/`, `ai_agent/`, `config/` and
+    # `tests/` all importable as top-level packages from inside the container — the same
+    # mechanism the spark image already relies on (docker/spark/Dockerfile).
+    PYTHONPATH: /opt/app
+    # Internal, in-network endpoints — NOT the host-mapped ports .env.example documents
+    # for use from the host. Overriding these three (rather than mounting .env, which
+    # risks Docker creating a directory in its place on a fresh clone that has none yet)
+    # is what lets harvest.py, build_silver.py and embeddings.py run unmodified in-container.
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: "5432"
+    MINIO_ENDPOINT: http://minio:9000
+    TRINO_URL: http://trino:8080
+    MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+    MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    MINIO_BUCKET: ${MINIO_BUCKET:-warehouse}
+    AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+    AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    AWS_REGION: ${AWS_REGION:-us-east-1}
+    # Passed straight through for the embed task. Blank OPENAI_API_KEY reproduces the
+    # exact "OPENAI_API_KEY is not set" failure make embed already reports on the host.
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-large}
+    EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1536}
+    SPARK_CONTAINER_NAME: ${SPARK_CONTAINER_NAME:-crypto-gov-spark-1}
+  volumes: &airflow-common-volumes
+    - ./dags:/opt/app/dags:ro
+    - ./data_pipeline:/opt/app/data_pipeline:ro
+    - ./ai_agent:/opt/app/ai_agent:ro
+    - ./config:/opt/app/config:ro
+    - ./tests:/opt/app/tests:ro
+    - airflow_logs:/opt/airflow/logs
+
 services:
 
   # --- Relational + vector storage ---------------------------------------
@@ -189,6 +241,72 @@ services:
       retries: 20
       start_period: 40s
 
+  # --- Airflow (Phase 7) ---------------------------------------------------
+  # LocalExecutor, not the blueprint's SQLite-backed SequentialExecutor: the `airflow`
+  # Postgres database has existed since Phase 1's init script specifically for this.
+  # One-shot: migrates the metadata schema and creates the admin user, then exits. Every
+  # other Airflow service waits on it completing successfully, matching the minio-init
+  # pattern already established in Phase 1.
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - >-
+        airflow db migrate &&
+        airflow users create --username ${AIRFLOW_ADMIN_USER:-admin}
+        --password ${AIRFLOW_ADMIN_PASSWORD:-admin} --firstname Admin --lastname User
+        --role Admin --email admin@example.com || true
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    ports:
+      # 8080 is Airflow's own default and also one of the most commonly already-occupied
+      # local ports; mapped externally to 8082 to avoid the collision, same reasoning as
+      # Postgres's non-default host port in Phase 1.
+      - "${AIRFLOW_WEB_PORT:-8082}:8080"
+    command: webserver
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+
+  # Only the scheduler gets the Docker socket. Under LocalExecutor, task code runs as a
+  # subprocess of the scheduler process — there is no separate "worker" service to reach
+  # for — so the socket only needs to exist where task code actually runs. Mounting it
+  # gives this one container root-equivalent control over the whole Docker host; that is
+  # an accepted, contained trade for a local single-user demo stack and is exactly the
+  # piece that does NOT carry over to AWS (see docs/phase-7-plan.md's AWS section) — MWAA
+  # has no host to mount a socket from, which is why the Spark step becomes a real rewrite
+  # rather than configuration at that point.
+  airflow-scheduler:
+    <<: *airflow-common
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./dags:/opt/app/dags:ro
+      - ./data_pipeline:/opt/app/data_pipeline:ro
+      - ./ai_agent:/opt/app/ai_agent:ro
+      - ./config:/opt/app/config:ro
+      - ./tests:/opt/app/tests:ro
+      - airflow_logs:/opt/airflow/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname \"$$HOSTNAME\""]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
 volumes:
   pgdata:
   minio_data:
+  airflow_logs:

@@ -6,7 +6,7 @@ PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 RUFF := $(VENV)/bin/ruff
 
-.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest check-openai silver sql spark-sql embed eval eval-sources clean api
+.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest check-openai silver silver-selftest sql spark-sql embed eval eval-sources clean api airflow-up verify-airflow airflow-check airflow-cli
 
 help: ## Show available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -95,6 +95,25 @@ spark-sql: ## Interactive Spark SQL shell (slower; matches what the jobs run)
 silver: ## Build the SCD2 silver tables from bronze (Spark)
 	docker compose exec -T spark spark-submit --master "local[*]" \
 		/opt/app/data_pipeline/transformation/build_silver.py
+
+silver-selftest: ## Deterministic Spark fixture checks (SCD2 windows, optional-column safety)
+	docker compose exec -T spark spark-submit --master "local[*]" /opt/app/tests/spark/scd2_selftest.py
+	docker compose exec -T spark spark-submit --master "local[*]" \
+		/opt/app/tests/spark/optional_column_selftest.py
+
+airflow-up: ## Start Airflow (Phase 7): migrate + create admin user, then webserver + scheduler
+	docker compose up -d airflow-init
+	docker compose up -d --wait airflow-webserver airflow-scheduler
+	@echo "Airflow UI: http://localhost:$${AIRFLOW_WEB_PORT:-8082}  (see .env for admin credentials)"
+
+verify-airflow: ## Phase 7 DAG tests, against the real Airflow install in the scheduler container
+	docker compose exec -T -w /opt/app airflow-scheduler python -m pytest tests/test_phase7_dags.py -v -p no:cacheprovider
+
+airflow-check: ## Quick DAG import-error check against the real Airflow install
+	docker compose exec -T airflow-scheduler airflow dags list-import-errors
+
+airflow-cli: ## Interactive shell in the scheduler container (airflow dags test, airflow variables, ...)
+	docker compose exec -it airflow-scheduler bash
 
 clean: ## Remove venv and caches
 	rm -rf $(VENV) .pytest_cache .ruff_cache
