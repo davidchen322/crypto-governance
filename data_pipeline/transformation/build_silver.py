@@ -71,6 +71,26 @@ HTML_ENTITIES = [
 ]
 
 
+def optional_col(df: DataFrame, name: str):
+    """Reference a raw JSON field that may be entirely absent from the inferred schema.
+
+    Spark's `spark.read.json` drops a field from the inferred schema outright when it is
+    null in every row of the files being read for that batch — not merely null-valued, but
+    missing from the resulting DataFrame's `columns` — so a plain `F.col(name)` then fails
+    with `UNRESOLVED_COLUMN` rather than returning nulls.
+
+    Caught live in CI, not in this repo's own test fixtures: a freshly-harvested batch of
+    Snapshot proposals where none yet had a linked forum discussion dropped `discussion`
+    from the schema entirely and failed the whole build with exit 1. Every optional field
+    sourced directly from the raw GraphQL response is equally exposed to this — a proposal
+    type, an IPFS cid, a vote count, a quorum — so every one of them goes through this
+    rather than just the field that happened to break first. `id`, `title` and `body` stay
+    direct `F.col()` references deliberately: their total absence across a batch would mean
+    the harvest itself is broken, which should fail loudly rather than silently null out.
+    """
+    return F.col(name) if name in df.columns else F.lit(None)
+
+
 def protocol_lookup(mapping: dict[str, str], column):
     """Build a CASE expression from a Python dict — small enough that a broadcast join
     would cost more than it saves."""
@@ -174,17 +194,19 @@ def build_proposals(spark: SparkSession) -> DataFrame:
         .withColumn("protocol_name", protocol_lookup(SPACE_TO_PROTOCOL, space))
         .withColumn("proposal_id", F.col("id"))
         .withColumn("source", F.lit("snapshot"))
-        .withColumn("discussion_url", F.col("discussion"))
-        .withColumn("proposal_state", F.col("state"))
-        .withColumn("proposal_type", F.col("type"))
-        .withColumn("ipfs_cid", F.col("ipfs"))
-        .withColumn("vote_count", F.col("votes").cast("bigint"))
-        .withColumn("quorum", F.col("quorum").cast("double"))
-        .withColumn("scores_total", F.col("scores_total").cast("double"))
-        .withColumn("scores", F.col("scores").cast("array<double>"))
-        .withColumn("voting_start", F.to_timestamp(F.from_unixtime(F.col("start"))))
-        .withColumn("voting_end", F.to_timestamp(F.from_unixtime(F.col("end"))))
-        .withColumn("proposal_created", F.to_timestamp(F.from_unixtime(F.col("created"))))
+        .withColumn("discussion_url", optional_col(raw, "discussion"))
+        .withColumn("proposal_state", optional_col(raw, "state"))
+        .withColumn("proposal_type", optional_col(raw, "type"))
+        .withColumn("ipfs_cid", optional_col(raw, "ipfs"))
+        .withColumn("vote_count", optional_col(raw, "votes").cast("bigint"))
+        .withColumn("quorum", optional_col(raw, "quorum").cast("double"))
+        .withColumn("scores_total", optional_col(raw, "scores_total").cast("double"))
+        .withColumn("scores", optional_col(raw, "scores").cast("array<double>"))
+        .withColumn("voting_start", F.to_timestamp(F.from_unixtime(optional_col(raw, "start"))))
+        .withColumn("voting_end", F.to_timestamp(F.from_unixtime(optional_col(raw, "end"))))
+        .withColumn(
+            "proposal_created", F.to_timestamp(F.from_unixtime(optional_col(raw, "created")))
+        )
     )
 
     # content_hash covers text only. A proposal whose vote tally moved is a new *record*
