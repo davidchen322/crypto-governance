@@ -91,6 +91,24 @@ def optional_col(df: DataFrame, name: str):
     return F.col(name) if name in df.columns else F.lit(None)
 
 
+def optional_struct_field(df: DataFrame, struct_col: str, field: str):
+    """`optional_col`, for a field nested inside a struct column (e.g. `post.slug`).
+
+    A struct's inferred schema is exposed to the identical gap as a top-level column: a
+    nested field that is null in every occurrence of the struct across the batch can be
+    dropped from the struct's own field list, not merely marked nullable — so
+    `F.col("post.username")` can raise UNRESOLVED_COLUMN exactly like a top-level
+    `F.col("username")` would. Caught live in CI a third time, at `slug` (a top-level
+    Discourse topic field, not actually nested — but the same failure mode, and the nested
+    `post.*` fields this file also reads are equally exposed and had not yet broken only
+    because no CI run had happened to hit one yet).
+    """
+    struct_type = df.schema[struct_col].dataType
+    if field in getattr(struct_type, "names", ()):
+        return F.col(f"{struct_col}.{field}")
+    return F.lit(None)
+
+
 def ensure_columns(df: DataFrame, columns: list[str]) -> DataFrame:
     """Defense in depth for `optional_col`, applied right before a `.select()` that
     requires every name in `columns` to exist.
@@ -308,28 +326,63 @@ def build_posts(spark: SparkSession) -> DataFrame:
 
     host = F.regexp_extract(F.col("source_key"), r"space=([^/]+)/", 1)
 
-    # A topic object without post_stream came from a harvest run without --with-posts.
-    # Dropping it silently would leave a gap that looks like the forum went quiet, so it
-    # is filtered explicitly and counted in the run summary.
     topics = (
         raw.withColumn("forum_host", host)
         .withColumn("protocol_name", protocol_lookup(HOST_TO_PROTOCOL, host))
         .withColumn("topic_id", F.col("id").cast("bigint"))
         .withColumn("topic_title", F.col("title"))
-        .withColumn("topic_slug", F.col("slug"))
-        .filter(F.col("post_stream.posts").isNotNull())
+        .withColumn("topic_slug", optional_col(raw, "slug"))
     )
 
-    posts = (
-        topics.withColumn("post", F.explode("post_stream.posts"))
-        .withColumn("post_id", F.col("post.id").cast("bigint"))
-        .withColumn("post_number", F.col("post.post_number").cast("int"))
-        .withColumn("username", F.col("post.username"))
-        .withColumn("body_html", F.col("post.cooked"))
-        .withColumn("post_created_at", F.to_timestamp(F.col("post.created_at")))
-        .withColumn("post_updated_at", F.to_timestamp(F.col("post.updated_at")))
-        .withColumn("reply_count", F.col("post.reply_count").cast("int"))
-    )
+    # A topic object without post_stream came from a harvest run without --with-posts.
+    # Dropping it silently would leave a gap that looks like the forum went quiet, so it
+    # is filtered explicitly and counted in the run summary.
+    #
+    # `post_stream` itself is exposed to the identical schema-inference gap as any other
+    # field — if EVERY topic in the batch being read lacks it (a harvest run without
+    # --with-posts, or, as measured, a bronze prefix holding only Phase 2's minimal test
+    # fixtures — {"id": "0xabc", "title": "..."} never mentions post_stream at all), the
+    # column is absent from the schema entirely, not merely null. Referencing
+    # `post_stream.posts` at all — even inside a filter condition that would evaluate to
+    # "no posts" — raises at plan-construction time, before any row is ever evaluated.
+    # Column resolution happens against the schema regardless of predicted row survival.
+    if "post_stream" in raw.columns:
+        exploded = topics.filter(F.col("post_stream.posts").isNotNull()).withColumn(
+            "post", F.explode("post_stream.posts")
+        )
+        posts = (
+            exploded.withColumn("post_id", F.col("post.id").cast("bigint"))
+            .withColumn(
+                "post_number", optional_struct_field(exploded, "post", "post_number").cast("int")
+            )
+            .withColumn("username", optional_struct_field(exploded, "post", "username"))
+            .withColumn("body_html", optional_struct_field(exploded, "post", "cooked"))
+            .withColumn(
+                "post_created_at",
+                F.to_timestamp(optional_struct_field(exploded, "post", "created_at")),
+            )
+            .withColumn(
+                "post_updated_at",
+                F.to_timestamp(optional_struct_field(exploded, "post", "updated_at")),
+            )
+            .withColumn(
+                "reply_count", optional_struct_field(exploded, "post", "reply_count").cast("int")
+            )
+        )
+    else:
+        # Nothing in this batch has post_stream at all — there is no post to build. An
+        # always-empty, correctly-typed frame, rather than a reference to a nested path
+        # that cannot exist anywhere in the schema.
+        posts = (
+            topics.filter(F.lit(False))
+            .withColumn("post_id", F.lit(None).cast("bigint"))
+            .withColumn("post_number", F.lit(None).cast("int"))
+            .withColumn("username", F.lit(None).cast("string"))
+            .withColumn("body_html", F.lit(None).cast("string"))
+            .withColumn("post_created_at", F.lit(None).cast("timestamp"))
+            .withColumn("post_updated_at", F.lit(None).cast("timestamp"))
+            .withColumn("reply_count", F.lit(None).cast("int"))
+        )
 
     # Order matters: block ends become newlines, then remaining tags go, then entities are
     # decoded, then only *horizontal* whitespace is collapsed so paragraph breaks survive.

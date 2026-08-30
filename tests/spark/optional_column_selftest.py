@@ -21,7 +21,11 @@ from pyspark.sql import functions as F
 
 sys.path.insert(0, "/opt/app")
 
-from data_pipeline.transformation.build_silver import ensure_columns, optional_col  # noqa: E402
+from data_pipeline.transformation.build_silver import (  # noqa: E402
+    ensure_columns,
+    optional_col,
+    optional_struct_field,
+)
 
 # No row in this batch mentions "discussion" at all — the exact shape that broke CI, where
 # a freshly-harvested set of proposals happened to share no linked forum discussion yet.
@@ -96,6 +100,86 @@ def main() -> int:
         and completed[0]["author"] is None
         and completed[0]["link"] is None
         and completed[0]["choices"] is None,
+    )
+
+    # The third round: `slug` broke CI, not discussion/author — a top-level Discourse
+    # topic field the first two rounds never touched, since they only covered
+    # build_proposals(). Same fixture shape, same fix, different function.
+    topic = spark.read.json(
+        spark.sparkContext.parallelize(
+            ['{"id": 1, "title": "T1", "post_stream": {"posts": [{"id": 10, "cooked": "hi"}]}}']
+        )
+    )
+    check("the fixture reproduces the bug: 'slug' is absent", "slug" not in topic.columns)
+    slug_fixed = topic.withColumn("topic_slug", optional_col(topic, "slug")).collect()
+    check("optional_col() on 'slug' does not raise", slug_fixed[0]["topic_slug"] is None)
+
+    # And the nested case: a field inside post_stream.posts[] is exposed to the identical
+    # gap one level deeper. optional_struct_field must inspect the EXPLODED element's own
+    # schema, not post_stream's (which has only one field, `posts`, an array).
+    exploded = topic.withColumn("post", F.explode("post_stream.posts"))
+    check(
+        "the fixture reproduces the nested bug: 'post_number' is absent from the post struct",
+        "post_number" not in exploded.schema["post"].dataType.names,
+    )
+    nested_raised = False
+    try:
+        exploded.withColumn("post_number", F.col("post.post_number")).collect()
+    except Exception:
+        nested_raised = True
+    check("F.col() on an absent nested field does raise", nested_raised)
+    nested_fixed = exploded.withColumn(
+        "post_number", optional_struct_field(exploded, "post", "post_number")
+    ).collect()
+    check(
+        "optional_struct_field() does not raise on an absent nested field",
+        nested_fixed[0]["post_number"] is None,
+    )
+    present_nested = spark.read.json(
+        spark.sparkContext.parallelize(
+            ['{"id": 2, "post_stream": {"posts": [{"id": 20, "post_number": 3}]}}']
+        )
+    ).withColumn("post", F.explode("post_stream.posts"))
+    kept_nested = present_nested.withColumn(
+        "post_number", optional_struct_field(present_nested, "post", "post_number")
+    ).collect()
+    check(
+        "optional_struct_field() passes a present nested field through unchanged",
+        kept_nested[0]["post_number"] == 3,
+    )
+
+    # The structural case one level up: `post_stream` itself absent from the WHOLE batch —
+    # measured to be exactly what Phase 2's own integration-test fixtures produce
+    # ({"id": 12345, "title": "Temp check"}, {"id": 999} — see
+    # tests/integration/test_phase2_bronze.py), which share the same bronze bucket Phase 3
+    # reads. Referencing `post_stream.posts` at all when no object anywhere in the batch
+    # ever mentions `post_stream` raises at plan-construction time — build_posts() branches
+    # on `"post_stream" in raw.columns` before ever writing that reference, exactly the
+    # pattern proven here in isolation.
+    fixture_shaped = spark.read.json(
+        spark.sparkContext.parallelize(['{"id": 12345, "title": "Temp check"}', '{"id": 999}'])
+    )
+    check(
+        "the fixture matches Phase 2's real payloads: 'post_stream' is absent",
+        "post_stream" not in fixture_shaped.columns,
+    )
+    branch_raised = False
+    try:
+        fixture_shaped.filter(F.col("post_stream.posts").isNotNull()).collect()
+    except Exception:
+        branch_raised = True
+    check(
+        "referencing post_stream.posts when the batch never mentions it does raise",
+        branch_raised,
+    )
+    # The guard build_posts() actually takes: check presence before ever building the
+    # reference, rather than trying to catch the exception after the fact.
+    safe_empty = (
+        fixture_shaped.filter(F.lit(False)) if "post_stream" not in fixture_shaped.columns else None
+    )
+    check(
+        "the presence check lets code route around the reference entirely, with zero rows",
+        safe_empty is not None and safe_empty.count() == 0,
     )
 
     spark.stop()

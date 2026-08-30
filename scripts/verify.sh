@@ -30,6 +30,11 @@ export POSTGRES_PORT=55433
 export MINIO_PORT=9010
 export MINIO_CONSOLE_PORT=9011
 export ICEBERG_REST_PORT=8182
+# Trino and Airflow joined docker-compose.yml after this isolation list was last touched;
+# neither was overridden here, so this harness collided with a dev stack's own services on
+# 8090/8082 the first time both ran at once — caught by actually running both together.
+export TRINO_PORT=8091
+export AIRFLOW_WEB_PORT=8083
 
 # The pytest fixtures read these, so probes hit the harness stack rather than the dev one.
 export MINIO_ENDPOINT="http://localhost:${MINIO_PORT}"
