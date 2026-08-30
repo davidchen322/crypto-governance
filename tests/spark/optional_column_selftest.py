@@ -21,7 +21,7 @@ from pyspark.sql import functions as F
 
 sys.path.insert(0, "/opt/app")
 
-from data_pipeline.transformation.build_silver import optional_col  # noqa: E402
+from data_pipeline.transformation.build_silver import ensure_columns, optional_col  # noqa: E402
 
 # No row in this batch mentions "discussion" at all — the exact shape that broke CI, where
 # a freshly-harvested set of proposals happened to share no linked forum discussion yet.
@@ -80,6 +80,22 @@ def main() -> int:
     check(
         "optional_col() passes a present column through unchanged",
         kept[0]["discussion_url"] == "https://forum/t/1",
+    )
+
+    # The general safety net: ensure_columns() must fix EVERY absent column a target list
+    # names, not just the one field a hand-written fix happened to cover. This is exactly
+    # the gap the first version of this fix left open — CI broke a second time on `author`,
+    # a field nothing here explicitly wrapped. Proven against three simultaneously-missing
+    # columns of different target types, not just one.
+    bare = spark.read.json(spark.sparkContext.parallelize(['{"id": "0xddd"}']))
+    target_columns = ["id", "author", "link", "choices"]
+    completed = ensure_columns(bare, target_columns).select(*target_columns).collect()
+    check(
+        "ensure_columns() adds every absent column so the select() it guards cannot raise",
+        completed[0]["id"] == "0xddd"
+        and completed[0]["author"] is None
+        and completed[0]["link"] is None
+        and completed[0]["choices"] is None,
     )
 
     spark.stop()

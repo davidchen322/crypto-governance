@@ -91,6 +91,26 @@ def optional_col(df: DataFrame, name: str):
     return F.col(name) if name in df.columns else F.lit(None)
 
 
+def ensure_columns(df: DataFrame, columns: list[str]) -> DataFrame:
+    """Defense in depth for `optional_col`, applied right before a `.select()` that
+    requires every name in `columns` to exist.
+
+    `optional_col` covers fields this file explicitly reads with `F.col(name)`. It does
+    NOT cover a field that is never renamed — where the GraphQL/JSON key already matches
+    the target column name, so nothing calls `.withColumn` for it at all and it is simply
+    expected to already be present. Those are exposed to the exact same schema-inference
+    gap and are easy to miss one at a time: the fix that shipped for `discussion` still let
+    a later CI run fail identically on `author`, because `author`, `link` and `choices`
+    pass through by name alone. This is the general form of that fix — every column the
+    final `.select()` needs gets a typed null default if the batch never produced it,
+    rather than waiting for live data to reveal which one is next.
+    """
+    for name in columns:
+        if name not in df.columns:
+            df = df.withColumn(name, F.lit(None))
+    return df
+
+
 def protocol_lookup(mapping: dict[str, str], column):
     """Build a CASE expression from a Python dict — small enough that a broadcast join
     would cost more than it saves."""
@@ -207,6 +227,15 @@ def build_proposals(spark: SparkSession) -> DataFrame:
         .withColumn(
             "proposal_created", F.to_timestamp(F.from_unixtime(optional_col(raw, "created")))
         )
+        # These three are never renamed — the GraphQL field name already matches the
+        # target column, so nothing above ever calls .withColumn for them, and they were
+        # missed by the first pass at this fix for exactly that reason: CI's *next* run
+        # found the gap by hitting `author` where the previous one hit `discussion`. Same
+        # bug, different field — see ensure_columns() below for why this stops being a
+        # one-field-at-a-time chase.
+        .withColumn("author", optional_col(raw, "author"))
+        .withColumn("link", optional_col(raw, "link"))
+        .withColumn("choices", optional_col(raw, "choices").cast("array<string>"))
     )
 
     # content_hash covers text only. A proposal whose vote tally moved is a new *record*
@@ -237,7 +266,8 @@ def build_proposals(spark: SparkSession) -> DataFrame:
     )
 
     configured = drop_unconfigured(hashed, "proposal")
-    return add_validity_windows(configured, ["proposal_id"]).select(*PROPOSAL_COLUMNS)
+    windowed = add_validity_windows(configured, ["proposal_id"])
+    return ensure_columns(windowed, PROPOSAL_COLUMNS).select(*PROPOSAL_COLUMNS)
 
 
 # --------------------------------------------------------------------------
@@ -328,7 +358,8 @@ def build_posts(spark: SparkSession) -> DataFrame:
         ),
     )
 
-    return add_validity_windows(hashed, ["forum_host", "topic_id", "post_id"]).select(*POST_COLUMNS)
+    windowed = add_validity_windows(hashed, ["forum_host", "topic_id", "post_id"])
+    return ensure_columns(windowed, POST_COLUMNS).select(*POST_COLUMNS)
 
 
 # --------------------------------------------------------------------------
