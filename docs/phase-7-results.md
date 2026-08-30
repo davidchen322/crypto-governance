@@ -249,27 +249,41 @@ doing this rather than reading logs alone:
   object in a fresh environment is one of Phase 2's synthetic probes, and none of them
   represent a configured protocol. This is the structural gap stated above, made concrete —
   fixing the crash was necessary but was never going to be sufficient on its own.
-- **A second, real resource-pressure finding, also only visible from a real CI run**: once
-  the schema crash stopped masking everything downstream, a fresh CI run showed *new*
-  failures — `Connection refused` to Trino — that hadn't appeared before Airflow's two extra
-  containers joined the default stack. Rather than guess whether this was transient,
-  `docker/`'s own risk table already named the fix: Compose **profiles**. `x-airflow-common`
-  now carries `profiles: ["airflow"]`, so a plain `docker compose up` (what `verify.sh` and
-  CI both run) starts exactly the five services it started before Phase 7 — confirmed by
-  tearing the whole stack down and bringing it back with a bare `docker compose up -d --wait`
-  in this session, watching only postgres/minio/iceberg-rest/spark/trino start. `make
-  airflow-up` (and only that target) passes `--profile airflow` to opt in; `make
-  verify-airflow`/`airflow-check`/`airflow-cli` need no change, since `docker compose exec`
-  targets an already-running container by name regardless of profile.
+- **Airflow's containers were gated behind a Compose profile regardless**, once a run
+  showed `Connection refused` to Trino for the first time — a failure that only became
+  visible once the schema crash stopped masking everything downstream of it, and that
+  coincided with Airflow's two extra containers newly being part of the default stack.
+  `docker/`'s own risk table already named the fix for this class of problem: Compose
+  **profiles**. `x-airflow-common` now carries `profiles: ["airflow"]`, so a plain
+  `docker compose up` (what `verify.sh` and CI both run) starts exactly the five services it
+  started before Phase 7 — confirmed by tearing the whole stack down and bringing it back
+  with a bare `docker compose up -d --wait` in this session, watching only
+  postgres/minio/iceberg-rest/spark/trino start. This is a real, independently-justified fix
+  (CI's resource footprint is smaller and unaffected by Airflow either way), and it's staying.
 
-**This last part is a decision, not a bug fix, and it's deliberately not made here.** Two
-honest paths forward: give CI a real harvest step before Phase 3+ tests run (accepting the
-live-network flakiness the `live` marker exists specifically to keep out of the default
-build), or re-scope those later-phase integration tests to run against synthetic,
-Phase-3-shaped fixtures the way Phase 2's own tests already do, so they no longer depend on
-real harvested data existing at all. Both are legitimate; they trade off differently
-(build reliability vs. genuine end-to-end coverage), and picking one isn't something to do
-unilaterally under a "fix the CI failure" mandate. Left open for a deliberate follow-up.
+  **What it did not do: fix the Trino failure.** The very next CI run, with Airflow correctly
+  excluded, showed the identical `Connection refused` to Trino. So Airflow was never the
+  cause — that was a wrong inference, corrected here rather than left standing. What the logs
+  do show: Trino passed its own healthcheck and was confirmed `Healthy` at the top of the
+  run, then stopped responding roughly three minutes into the test session — while Phase 3's
+  tests were running several sequential `spark-submit` subprocesses. No explicit OOM signal
+  appears in the captured logs, but the timing is consistent with memory pressure on a
+  standard GitHub Actions runner rather than a startup problem. **Not diagnosed further in
+  this session** — it's a CI-runner-sizing or test-suite-structure question, not a code bug,
+  and pursuing it further belongs to a deliberate follow-up rather than more debugging cycles
+  layered onto an already-long investigation.
+
+**None of this is a decision to make unilaterally, and none of it is made here.** Three real,
+open questions this investigation surfaced, all in the same territory: (1) CI never harvests
+real data before Phase 3+ tests run, so those tests structurally cannot pass regardless of any
+schema fix; (2) Trino stops responding partway through the same test session, for a reason not
+yet pinned down; (3) more generally, whether `-m "integration and not persistence and not
+live"` should keep sweeping every later phase's integration tests into one job at all, given
+neither of the first two problems existed back when that selection only covered Phase 0/1.
+Two honest paths on the data question specifically: give CI a real harvest step (accepting the
+live-network flakiness the `live` marker exists to keep out of the default build), or re-scope
+later-phase integration tests to run against synthetic, Phase-3-shaped fixtures the way Phase
+2's own tests already do. Left open for deliberate follow-up.
 
 **CI status:** the fix commits were pushed during this session; check
 `https://github.com/davidchen322/crypto-governance/actions` for the latest run — by the time
