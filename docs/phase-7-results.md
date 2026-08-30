@@ -181,42 +181,88 @@ verify-airflow` runs it inside `airflow-scheduler`, which has the real dependenc
 
 ---
 
-## A CI bug found and fixed along the way — twice
+## A CI investigation that turned into three rounds and one structural finding
 
 While bringing this stack up, a message arrived reporting the "Stack acceptance" CI job had
 been failing. Investigating turned out to be unrelated to Phase 7 itself but genuinely urgent,
-so it was fixed in the same session rather than deferred. Full detail lives in the two commit
-messages (`ac6a2cf`, `becaf58`); summarized:
+so it was pursued in the same session rather than deferred. Full detail lives in four commit
+messages (`ac6a2cf`, `becaf58`, `c82e9c8`); summarized, including what it actually turned out
+to be — which is not what the first round assumed.
 
-**Root cause:** `spark.read.json()` drops a field from its inferred schema entirely when that
-field is `null` in every row of the batch being read — not merely typed nullable, genuinely
-absent from `df.columns`. CI harvests live from Snapshot; twice in a row, the small fresh
-batch of proposals it fetched happened to have every proposal share a null value for one
-optional field (`discussion` the first time, `author` the second), and `build_proposals()`
-referenced each with a plain `F.col(name)`, which raises `UNRESOLVED_COLUMN` rather than
-returning nulls.
+**The bug, in its real form:** `spark.read.json()` builds its schema as a **union across every
+file in the batch**. A field that no object anywhere in the batch ever mentions — not "null",
+genuinely absent as a key — never enters the inferred schema at all. Referencing it with
+`F.col(name)` then raises `UNRESOLVED_COLUMN` rather than returning nulls.
 
-**Fix, in two rounds:** the first round wrapped every field this file explicitly reads via
-`F.col()`. CI's very next run proved that wasn't enough — `author`, `link` and `choices` pass
-through by name alone (the GraphQL field name already matches the target column, so nothing
-ever calls `.withColumn` for them), and are exposed to the identical gap. The second round
-added `ensure_columns(df, columns)`: applied once, immediately before each of
-`build_proposals()`'s and `build_posts()`'s final `.select()`, it adds a null default for
-**any** column in the target list Spark's schema inference dropped — not just the fields a
-hand-written fix happened to enumerate. This is the general form of the fix, and it protects
-`build_posts()`'s column list too, proactively, without that function having actually failed
-yet.
+**What the first two rounds got wrong about *why* this was happening.** Both assumed live
+Snapshot data was the culprit — a small fresh harvest happening to share a null value for one
+optional field (`discussion`, then `author`). That explanation was never actually verified,
+and round three's investigation found the truer, more mundane cause: **nothing in the tracked
+test suite or CI workflow ever calls `data_pipeline.harvest` against a real source.**
+`scripts/verify.sh`'s "Phase 1" step selects `pytest -m "integration and not persistence and
+not live"` — a selection that, once later phases' integration tests existed, started sweeping
+in Phase 3, 4 and 5's tests too, none of which populate real data. The *only* bronze objects
+that exist in a fresh CI run are `tests/integration/test_phase2_bronze.py`'s own minimal
+fixtures — `{"id": "0xabc", "title": "Raise LTV"}`, `{"id": 12345, "title": "Temp check"}`,
+`{"id": 999}`, and similar. Every one of them is filtered out later by `drop_unconfigured`
+(they use `probe-*` space names), but not before Spark's schema inference has already run
+across them — and a sparse fixture mentioning only `id`/`title`/`body`/`scores` leaves *every
+other field* `build_proposals()` and `build_posts()` read genuinely absent, deterministically,
+every single run. Not live-data luck. A structural gap, hit at whichever field happened to be
+referenced next.
 
-**Verified**, not assumed: `tests/spark/optional_column_selftest.py` deterministically
-reproduces the exact schema-inference gap (a JSON batch that never mentions a given field at
-all — no live-data luck required to exercise it) and proves both that the naive approach
-really does crash and that the fix doesn't. `build_silver.py` was re-run against this
-environment's real bronze data after each round with no change in output (100 proposal
-versions, 665 forum posts, both times).
+**Fix, in three rounds — the first two real but incomplete, the third comprehensive:**
+
+1. Wrapped every field `build_proposals()` explicitly reads via `F.col()` with `optional_col`.
+   Fixed `discussion`; CI's next run hit `author` — a field that passes through by name alone
+   (the GraphQL key already matches the target column, so nothing calls `.withColumn` for it).
+2. Added `ensure_columns(df, columns)`: applied once before each of `build_proposals()`'s and
+   `build_posts()`'s final `.select()`, it null-defaults **any** absent column in the target
+   list, not just the ones a hand-written fix enumerated. CI's next run hit `slug` — in
+   `build_posts()`, which the first two rounds never touched at all.
+3. Added `optional_struct_field()` (the same idea, for a field nested inside `post_stream.
+   posts[]` — a struct's inferred type is exposed to the identical gap one level deeper), and
+   made `build_posts()` branch on `"post_stream" in raw.columns` **before** ever writing a
+   `post_stream.posts` reference anywhere, including inside a filter condition — referencing a
+   nested path that cannot exist in the schema raises at plan-construction time regardless of
+   whether the row would later be filtered out.
+
+**Verified against the exact fixture payloads, not guessed at.**
+`tests/spark/optional_column_selftest.py` grew to 15 deterministic assertions, including the
+literal `test_phase2_bronze.py` payloads reproduced verbatim and the `post_stream`-entirely-
+absent branch proven in isolation — no live data or luck needed to exercise any of it.
+`build_silver.py` was re-run against this environment's real bronze data after every round
+with no change in output (100 proposal versions, 665 forum posts, all three times).
+
+**What full local reproduction found that field-by-field fixing couldn't.** Round three also
+ran `scripts/verify.sh` itself, locally, end to end, in its own isolated Compose project — the
+most faithful reproduction of CI's exact sequence available. Two things came out of actually
+doing this rather than reading logs alone:
+
+- **A real, unrelated infrastructure bug**: the harness collided with this session's own
+  running dev stack on Trino's and Airflow's ports, because `scripts/verify.sh`'s isolation
+  exports were never updated when either service joined `docker-compose.yml`. Fixed by adding
+  `TRINO_PORT`/`AIRFLOW_WEB_PORT` overrides alongside the existing ones.
+- **The schema-inference crash is gone** — no more `UNRESOLVED_COLUMN` anywhere. But
+  `test_phase3_silver.py`'s "both tables are populated" and related assertions **still fail**,
+  because `proposal_versions`/`forum_posts` end up with **zero real rows**: every bronze
+  object in a fresh environment is one of Phase 2's synthetic probes, and none of them
+  represent a configured protocol. This is the structural gap stated above, made concrete —
+  fixing the crash was necessary but was never going to be sufficient on its own.
+
+**This last part is a decision, not a bug fix, and it's deliberately not made here.** Two
+honest paths forward: give CI a real harvest step before Phase 3+ tests run (accepting the
+live-network flakiness the `live` marker exists specifically to keep out of the default
+build), or re-scope those later-phase integration tests to run against synthetic,
+Phase-3-shaped fixtures the way Phase 2's own tests already do, so they no longer depend on
+real harvested data existing at all. Both are legitimate; they trade off differently
+(build reliability vs. genuine end-to-end coverage), and picking one isn't something to do
+unilaterally under a "fix the CI failure" mandate. Left open for a deliberate follow-up.
 
 **CI status:** the fix commits were pushed during this session; check
 `https://github.com/davidchen322/crypto-governance/actions` for the latest run — by the time
-this document is read, that run's outcome is more current than anything stated here.
+this document is read, that run's outcome (and whether the zero-rows gap above has since been
+addressed) is more current than anything stated here.
 
 ---
 
