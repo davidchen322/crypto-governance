@@ -17,6 +17,14 @@ name: crypto-gov
 # feature — YAML anchors are document-global regardless of nesting, but `x-` keys are the
 # part Compose itself knows to ignore rather than mistake for a fourth service.
 x-airflow-common: &airflow-common
+  # Opt-in, not started by a plain `docker compose up`. Airflow's two extra JVM/Python
+  # containers measurably strain CI's runner memory budget — added here after observing
+  # Trino connection refusals in a run that had never seen them before Airflow joined the
+  # default stack. The implementation plan's own risk table anticipated exactly this:
+  # "Compose profiles so you can run subsets." `make airflow-up` passes --profile airflow;
+  # verify.sh and a plain `make up` do not, so CI's resource footprint is unchanged from
+  # before Phase 7 unless Airflow is deliberately requested.
+  profiles: ["airflow"]
   build:
     context: .
     dockerfile: docker/airflow/Dockerfile

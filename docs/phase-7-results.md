@@ -249,6 +249,18 @@ doing this rather than reading logs alone:
   object in a fresh environment is one of Phase 2's synthetic probes, and none of them
   represent a configured protocol. This is the structural gap stated above, made concrete —
   fixing the crash was necessary but was never going to be sufficient on its own.
+- **A second, real resource-pressure finding, also only visible from a real CI run**: once
+  the schema crash stopped masking everything downstream, a fresh CI run showed *new*
+  failures — `Connection refused` to Trino — that hadn't appeared before Airflow's two extra
+  containers joined the default stack. Rather than guess whether this was transient,
+  `docker/`'s own risk table already named the fix: Compose **profiles**. `x-airflow-common`
+  now carries `profiles: ["airflow"]`, so a plain `docker compose up` (what `verify.sh` and
+  CI both run) starts exactly the five services it started before Phase 7 — confirmed by
+  tearing the whole stack down and bringing it back with a bare `docker compose up -d --wait`
+  in this session, watching only postgres/minio/iceberg-rest/spark/trino start. `make
+  airflow-up` (and only that target) passes `--profile airflow` to opt in; `make
+  verify-airflow`/`airflow-check`/`airflow-cli` need no change, since `docker compose exec`
+  targets an already-running container by name regardless of profile.
 
 **This last part is a decision, not a bug fix, and it's deliberately not made here.** Two
 honest paths forward: give CI a real harvest step before Phase 3+ tests run (accepting the

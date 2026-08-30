@@ -6,7 +6,7 @@ PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 RUFF := $(VENV)/bin/ruff
 
-.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest check-openai silver silver-selftest sql spark-sql embed eval eval-sources clean api airflow-up verify-airflow airflow-check airflow-cli
+.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest check-openai silver silver-selftest sql spark-sql embed eval eval-sources clean api airflow-up airflow-down verify-airflow airflow-check airflow-cli
 
 help: ## Show available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -102,9 +102,12 @@ silver-selftest: ## Deterministic Spark fixture checks (SCD2 windows, optional-c
 		/opt/app/tests/spark/optional_column_selftest.py
 
 airflow-up: ## Start Airflow (Phase 7): migrate + create admin user, then webserver + scheduler
-	docker compose up -d airflow-init
-	docker compose up -d --wait airflow-webserver airflow-scheduler
+	docker compose --profile airflow up -d airflow-init
+	docker compose --profile airflow up -d --wait airflow-webserver airflow-scheduler
 	@echo "Airflow UI: http://localhost:$${AIRFLOW_WEB_PORT:-8082}  (see .env for admin credentials)"
+
+airflow-down: ## Stop Airflow only, leaving the rest of the stack running
+	docker compose --profile airflow stop airflow-webserver airflow-scheduler airflow-init
 
 verify-airflow: ## Phase 7 DAG tests, against the real Airflow install in the scheduler container
 	docker compose exec -T -w /opt/app airflow-scheduler python -m pytest tests/test_phase7_dags.py -v -p no:cacheprovider
