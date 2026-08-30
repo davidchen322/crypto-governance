@@ -11,6 +11,9 @@ dependencies = [
     "tiktoken>=0.7",
     # Phase 5. langchain-core comes with it and supplies BaseMessage/add_messages.
     "langgraph>=0.2",
+    # Phase 6. httpx (FastAPI's TestClient) already arrives transitively via langgraph-sdk.
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
 ]
 
 [project.scripts]

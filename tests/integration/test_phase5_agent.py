@@ -61,7 +61,13 @@ def test_every_template_executes_against_silver():
     from ai_agent.graph.sql_templates import TEMPLATES
 
     for name in TEMPLATES:
-        sql = render(name, {"field": "vote_count", "direction": "DESC", "limit": 3})
+        params = {
+            "field": "vote_count",
+            "direction": "DESC",
+            "limit": 3,
+            "proposal_id": "0xabc123",  # only get_proposal (Phase 6) reads this
+        }
+        sql = render(name, params)
         rows = trino_query(sql)
         assert isinstance(rows, list), name
 

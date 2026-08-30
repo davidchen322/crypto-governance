@@ -150,7 +150,12 @@ def test_every_template_constrains_is_current():
     from ai_agent.graph.sql_templates import TEMPLATES
 
     for name in TEMPLATES:
-        params = {"field": "vote_count", "direction": "ASC", "limit": 5}
+        params = {
+            "field": "vote_count",
+            "direction": "ASC",
+            "limit": 5,
+            "proposal_id": "0xabc123",  # only get_proposal (Phase 6) reads this
+        }
         assert "is_current" in render(name, params), name
 
 

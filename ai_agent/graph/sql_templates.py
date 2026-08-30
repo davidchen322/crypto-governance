@@ -8,11 +8,23 @@ string interpolation of model output into a query.
 Every template constrains `is_current`. Silver is SCD2, so a proposal edited three times has
 three rows; without that predicate every count is inflated by edit history, and the number
 looks plausible enough that nobody checks it.
+
+Phase 6 adds a second source of untrusted input: `proposal_id` on `get_proposal` comes
+straight from an HTTP path segment (`GET /proposals/{proposal_id}`), not from a model that
+has already been told which protocols and states exist. Model-extracted parameters are
+validated against small enums; a path segment can be anything a client sends, so it gets its
+own pattern check rather than inheriting the enum path — see `PROPOSAL_ID_RE` below.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
+
+# 0x + 64 hex characters covers a Snapshot proposal id (a keccak256 hash) with room to
+# spare; the charset also covers any plausible non-Snapshot id without admitting quotes,
+# whitespace or SQL punctuation.
+PROPOSAL_ID_RE = re.compile(r"^[0-9a-zA-Z:_.-]{1,128}$")
 
 PROTOCOLS_SQL = "('aave','uniswap','arbitrum','optimism','ens')"
 
@@ -82,6 +94,17 @@ TEMPLATES: dict[str, dict[str, Any]] = {
             ORDER BY proposal_created DESC LIMIT {limit}
         """,
     },
+    "get_proposal": {
+        "description": "Full detail for one current proposal by id.",
+        "params": ["proposal_id"],
+        "sql": """
+            SELECT proposal_id, protocol_name, title, body, proposal_state,
+                   author, voting_start, voting_end, vote_count, scores_total,
+                   proposal_created
+            FROM iceberg.silver.proposal_versions
+            WHERE is_current AND proposal_id = {proposal_id}
+        """,
+    },
 }
 
 
@@ -104,7 +127,7 @@ def _quote(value: Any) -> str:
     if isinstance(value, int):
         return str(value)
     text = str(value)
-    if len(text) > 64:
+    if len(text) > 128:
         raise TemplateError(f"parameter too long: {len(text)} chars")
     return "'" + text.replace("'", "''") + "'"
 
@@ -129,6 +152,15 @@ def render(name: str, params: dict[str, Any]) -> str:
         if key == "limit":
             n = int(raw) if raw is not None else 10
             values[key] = str(max(1, min(n, 100)))
+            continue
+
+        if key == "proposal_id":
+            # Rejected, not merely escaped: this is the one parameter that can arrive
+            # directly from an HTTP client rather than from a model already constrained to
+            # known protocols and states.
+            if not isinstance(raw, str) or not PROPOSAL_ID_RE.fullmatch(raw):
+                raise TemplateError(f"invalid proposal_id {raw!r}")
+            values[key] = _quote(raw)
             continue
 
         if key == "protocol" and raw is not None:

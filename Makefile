@@ -6,7 +6,7 @@ PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 RUFF := $(VENV)/bin/ruff
 
-.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest check-openai silver sql spark-sql embed eval eval-sources clean
+.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest check-openai silver sql spark-sql embed eval eval-sources clean api
 
 help: ## Show available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -81,6 +81,10 @@ ask: install ## Answer a governance question with citations (make ask Q="...")
 
 eval-routing: install ## Score the intent router against the routing eval set
 	$(PY) tests/eval/score_routing.py $(ARGS)
+
+API_PORT ?= 8000
+api: install ## Run the FastAPI dev server (API_PORT=8001 make api for a different port)
+	$(VENV)/bin/uvicorn backend_api.main:app --reload --port $(API_PORT)
 
 sql: ## Interactive Trino shell — fast, use this for exploring
 	docker compose exec -it trino trino
