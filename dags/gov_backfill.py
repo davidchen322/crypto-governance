@@ -31,7 +31,7 @@ from dags.gov_common import (
     BACKFILL_PROPOSALS,
     BACKFILL_TOPICS,
     DEFAULT_COST_CEILING_USD,
-    DEFAULT_COST_PER_1K_TOKENS,
+    DEFAULT_COST_PER_1M_TOKENS,
     build_silver_command,
     estimate_embedding_cost,
     harvest_command,
@@ -94,7 +94,7 @@ def gov_backfill():
 
         model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-large")
         rate = float(
-            Variable.get("embedding_cost_per_1k_tokens", default_var=DEFAULT_COST_PER_1K_TOKENS)
+            Variable.get("embedding_cost_per_1m_tokens", default_var=DEFAULT_COST_PER_1M_TOKENS)
         )
         ceiling = float(
             Variable.get("backfill_cost_ceiling_usd", default_var=DEFAULT_COST_CEILING_USD)
@@ -103,11 +103,11 @@ def gov_backfill():
         with psycopg.connect(Settings.from_env().postgres_dsn) as conn:
             tokens, chunks = estimate_embedding_cost(conn, model)
 
-        estimated_cost = tokens / 1000 * rate
+        estimated_cost = tokens / 1_000_000 * rate
         report = {
             "chunks_to_embed": chunks,
             "tokens_to_embed": tokens,
-            "rate_per_1k_tokens": rate,
+            "rate_per_1m_tokens": rate,
             "estimated_cost_usd": round(estimated_cost, 4),
             "ceiling_usd": ceiling,
         }

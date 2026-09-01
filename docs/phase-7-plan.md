@@ -113,7 +113,7 @@ today.
   (a `dagrun.conf` dict), not hardcoded — see *Sizing the backfill*, below, for what to pass.
 - Before the real `embed` task, an `embed_dry_run` task runs `ai_agent.chains.embeddings.main
   (["--dry-run"])`, parses the reported token count, multiplies by a per-token rate read from
-  an Airflow Variable (`embedding_cost_per_1k_tokens`, set once and updated when pricing
+  an Airflow Variable (`embedding_cost_per_1m_tokens`, set once and updated when pricing
   changes — never hardcoded into the DAG, per the project's existing "check current published
   rates" discipline), and compares the result against another Variable
   (`backfill_cost_ceiling_usd`).

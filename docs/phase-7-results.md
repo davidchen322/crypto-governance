@@ -14,7 +14,7 @@ without error. New to the plan this follows? See [`phase-7-plan.md`](phase-7-pla
 | Exit criterion | Target | Measured |
 | --- | --- | --- |
 | `gov_pipeline_daily` runs harvest → silver → embed, in order | works | **proven via `airflow dags test`** — all 5 mapped harvests + build_silver succeeded; `embed` correctly failed only because this environment has no `OPENAI_API_KEY` |
-| `gov_backfill` accepts run-time params and enforces a cost ceiling | works | **proven both ways** — a real cost estimate ($76.27 for 2,061 chunks) correctly blocked the DAG under a $5 ceiling, and correctly passed through once the ceiling was raised |
+| `gov_backfill` accepts run-time params and enforces a cost ceiling | works | **proven both ways after fixing a real 1000x unit bug found along the way** — see below. Corrected estimate: $0.08 for 2,082 chunks, correctly blocked under a $0.01 ceiling and correctly passed under the $5 default |
 | DAGs import without error | zero import errors | **`airflow dags list-import-errors` → "No data found"**, first attempt |
 | DAG structure and safety, unit-tested | — | **10/10 pass** against the real Airflow install |
 
@@ -117,37 +117,55 @@ airflow.exceptions.AirflowFailException: embeddings.main() exited 1
 real key configured, so this is the designed failure, not a bug. See *What else needs to be
 done*, below, for what turns this green.)
 
-### `gov_backfill`'s cost ceiling, proven both directions
+### `gov_backfill`'s cost ceiling, proven both directions — and a real bug caught and fixed along the way
 
 ```
 $ docker compose exec -T airflow-scheduler airflow dags test gov_backfill 2026-08-30 \
     --conf '{"protocols": ["aave"], "proposals": 5, "topics": 3}'
 ```
 
-`resolve_protocols` → `harvest[aave]` → `build_silver` all succeeded, then, with the default
-`backfill_cost_ceiling_usd` of $5:
+`resolve_protocols` → `harvest[aave]` → `build_silver` all succeeded. The first time this ran,
+`check_cost_ceiling` reported an estimate of **$76.27** for 2,061 chunks against the default
+$5 ceiling, correctly blocked the run, and — raising the Variable to $100 — correctly let an
+identical re-run proceed. That looked like a clean two-directional proof, and it shipped as
+one in an earlier version of this document.
+
+**It wasn't.** `DEFAULT_COST_PER_1M_TOKENS` (then named and valued as *per-1,000* tokens) was
+off by exactly 1000x — a dropped-zeros transcription of Phase 4's own measured rate ($0.055
+for 419,826 tokens is $0.131 **per million** tokens, matching OpenAI's published rate for
+`text-embedding-3-large`, not per thousand). The real cost of that same run was **$0.08**, not
+$76 — safely under even the *default* $5 ceiling. The "block" this document was proud of was
+real in the sense that the code correctly compared its estimate to the ceiling and failed
+loudly — but the estimate itself was fiction, inflated a thousandfold. Caught during a later
+session, fixed in `dags/gov_common.py`/`dags/gov_backfill.py`, and re-verified from scratch
+rather than just editing the number in this file:
 
 ```
-airflow.exceptions.AirflowFailException: Estimated embedding cost $76.27 for 2061 chunks
-(582,218 tokens) exceeds the $5.00 ceiling. Raise the 'backfill_cost_ceiling_usd' Airflow
-Variable to proceed, or re-trigger with smaller params.topics / params.proposals.
+# default ceiling ($5.00) — now correctly passes through:
+{'chunks_to_embed': 2082, 'tokens_to_embed': 586312, 'rate_per_1m_tokens': 0.131,
+ 'estimated_cost_usd': 0.0768, 'ceiling_usd': 5.0}
+  -> check_cost_ceiling SUCCESS, embed reached (failed only on the missing API key)
+
+# ceiling lowered to $0.01 — now correctly blocks:
+airflow.exceptions.AirflowFailException: Estimated embedding cost $0.08 for 2082 chunks
+(586,312 tokens) exceeds the $0.01 ceiling.
 ```
 
-That estimate is real — computed by `estimate_embedding_cost()` calling the exact same
-`load_silver_chunks()` / `filter_already_embedded()` functions `make embed --dry-run` uses,
-against this environment's actual accumulated silver (100 proposal versions, 665 forum posts
-from earlier phases' testing, none yet embedded). Raising the Variable to $100 and re-running
-the identical command let `check_cost_ceiling` **succeed** with the same $76.27 estimate now
-under the higher ceiling, and the DAG proceeded to `embed`, which then failed only on the
-same missing-API-key condition as the daily DAG — proving both branches of the safety check
-without spending anything.
+Both directions hold, on numbers that are actually right this time. Worth naming plainly:
+this is exactly the kind of error a project's own "verify for real, don't just assert"
+discipline is supposed to catch — and it very nearly didn't, because the mechanism (compare
+estimate to ceiling, fail loudly if over) worked correctly regardless of whether the estimate
+itself was sane. A test that only checks "did the comparison fire" cannot catch a bad input to
+that comparison; only cross-checking the number against an independent source (OpenAI's
+published rate, or Phase 4's own original measurement redone carefully) could have, and did,
+eventually.
 
 ### The one wrinkle worth naming: the ceiling estimates the whole pending queue, not just this run
 
 `check_cost_ceiling` estimates the cost of *everything currently pending* across all of
 silver, not only the documents this specific backfill run just harvested — because that is
 also what `embed()` itself actually does; it is a global incremental job, not scoped to one
-DAG run. The $76.27 figure above reflects this environment's entire un-embedded backlog, not
+DAG run. The $0.08 figure above reflects this environment's entire un-embedded backlog, not
 merely five Aave proposals. This is correct behavior, not a bug, but it means re-triggering a
 backfill for one protocol while a large embedding backlog exists elsewhere will report that
 whole backlog's cost, not just the new protocol's — worth knowing before reading the number.
@@ -341,13 +359,13 @@ what prevents that).
 
 ### 4. Set the two Airflow Variables that gate backfill spending
 
-Both have code defaults (`0.131`/1k tokens, `$5.00` ceiling) so the DAG runs without them —
+Both have code defaults (`$0.131`/1M tokens, `$5.00` ceiling) so the DAG runs without them —
 but the defaults were chosen from Phase 4's measured rate on a much smaller corpus, and $5
 is a conservative placeholder, not a considered budget. Set real values before the first
 real backfill, in the UI (Admin → Variables) or the CLI:
 
 ```bash
-docker compose exec airflow-scheduler airflow variables set embedding_cost_per_1k_tokens 0.13
+docker compose exec airflow-scheduler airflow variables set embedding_cost_per_1m_tokens 0.13
 docker compose exec airflow-scheduler airflow variables set backfill_cost_ceiling_usd 25.00
 ```
 
@@ -407,8 +425,8 @@ against what this session actually confirmed:
 | Quiet days stay quiet (idempotent re-runs) | ⏳ **not yet observable** — needs `embed` to actually succeed once (real API key) before a second run can show "nothing to embed"; the mechanism itself (bronze content-addressing, guarded MERGE, embeddings skip-check) is unchanged from Phases 2-4 and already individually proven there |
 | A week of green daily runs | ⏳ **needs real elapsed time** — cannot be simulated; revisit after step 3 above has been live for a week |
 | Backfill accepts run-time params | ✅ confirmed (test + real trigger with `--conf`) |
-| Cost ceiling blocks an over-budget estimate | ✅ confirmed (real $76.27 estimate blocked a $5 ceiling) |
-| Cost ceiling lets an under-budget estimate proceed | ✅ confirmed (same estimate passed a $100 ceiling) |
+| Cost ceiling blocks an over-budget estimate | ✅ confirmed ($0.08 estimate blocked a $0.01 ceiling, after fixing a 1000x unit bug the first version of this proof didn't catch) |
+| Cost ceiling lets an under-budget estimate proceed | ✅ confirmed (same $0.08 estimate passed the $5 default ceiling) |
 | At least one multi-version entity in silver (Phase 3/5/6's long-standing gap) | ⏳ **still open** — this session's harvests were all small and fresh; a real backfill run followed by a later re-harvest that catches something changed is what finally exercises this, per the plan |
 
 ---

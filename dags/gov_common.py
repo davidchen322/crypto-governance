@@ -35,11 +35,21 @@ DAILY_TOPICS = 15
 BACKFILL_PROPOSALS = 1000
 BACKFILL_TOPICS = 500
 
-# Phase 4's own measured rate: $0.055 for 419,826 tokens = ~$0.131 per 1,000 tokens on
-# text-embedding-3-large. A *default*, overridable via the `embedding_cost_per_1k_tokens`
-# Airflow Variable — check current published OpenAI rates before trusting it, exactly per
-# the project's existing convention (see implementation-plan.md's Cost section).
-DEFAULT_COST_PER_1K_TOKENS = 0.131
+# Phase 4's own measured rate: $0.055 for 419,826 tokens = ~$0.131 per 1,000,000 tokens on
+# text-embedding-3-large (matches OpenAI's published $0.13/1M rate). A *default*, overridable
+# via the `embedding_cost_per_1m_tokens` Airflow Variable — check current published OpenAI
+# rates before trusting it, exactly per the project's existing convention (see
+# implementation-plan.md's Cost section).
+#
+# Found and fixed during Phase 7's own build: an earlier version of this constant was named
+# and valued as "per 1,000 tokens" while carrying the per-1,000,000 figure — a dropped-zeros
+# transcription of the Phase 4 arithmetic, not a units disagreement with OpenAI's own pricing.
+# It inflated every cost estimate by exactly 1000x, so `check_cost_ceiling` was validating
+# real backfill runs against invented $76+ price tags for what actually cost ~$0.08. The
+# failure direction was the safe one — it over-blocks rather than under-warns — but it made
+# the ceiling check meaningless in practice, since a correctly-priced backfill would almost
+# always look catastrophically expensive.
+DEFAULT_COST_PER_1M_TOKENS = 0.131
 DEFAULT_COST_CEILING_USD = 5.00
 
 
