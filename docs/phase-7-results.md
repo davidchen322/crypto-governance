@@ -487,6 +487,82 @@ make verify-airflow         # confirm the DAGs are structurally sound
 
 ---
 
+## What happens after the checklist, and what to verify
+
+Running the checklist starts the pipeline; it doesn't, by itself, prove the pipeline is
+*correct*. Two separate things happen — a recurring small update and a one-time large one —
+and each has its own real, data-level check, not just an Airflow checkmark.
+
+### After `gov_pipeline_daily` runs
+
+**What happens:** harvest (20 proposals + 15 topics per protocol, all 5 protocols) → build
+silver → embed whatever's new. With a real key in place, `embed` succeeds for the first
+time — before this, `document_embeddings` has never held a real row in the dev stack (only
+the isolated CI fixture has real vectors so far).
+
+**What to verify — the data, not just the checkmarks:**
+
+```bash
+# bronze/silver actually grew
+docker compose exec trino trino --execute "SELECT count(*) FROM iceberg.silver.proposal_versions"
+docker compose exec trino trino --execute "SELECT count(*) FROM iceberg.silver.forum_posts"
+
+# embeddings actually populated
+docker compose exec postgres psql -U engineer -d gov_vectors -c \
+  "SELECT chunk_scheme, count(*) FROM document_embeddings GROUP BY 1"
+
+# the actual product works now
+make search Q="oracle deprecation"
+make ask Q="How many proposals does each protocol have?"
+```
+
+**The more important check is the *second* run.** Trigger (or wait for) another daily run and
+read the task logs — a healthy quiet day looks like: `harvest` mostly "unchanged", not
+"written"; `build_silver` reporting `no changes, MERGE skipped` for both tables; `embed`
+reporting `nothing to embed — everything is current`. If a second run instead re-embeds
+everything and takes as long as the first, that is idempotency breaking silently — the
+quietest possible failure, since nothing errors and it just costs money every day for no
+reason. A week of quiet, green runs is the actual exit criterion, not one successful run.
+
+### After `gov_backfill` runs
+
+**What happens:** harvest at whatever scale was passed (e.g. 200 proposals/100 topics) →
+build silver → `check_cost_ceiling` (now correctly estimating real dollars, after the 1000x
+unit bug fixed above) → embed, if under budget.
+
+**What to verify:**
+
+```bash
+# the real cost estimate, before trusting it
+docker compose exec airflow-scheduler airflow tasks logs gov_backfill check_cost_ceiling <run-date>
+# look for: {'chunks_to_embed': N, 'tokens_to_embed': N, 'estimated_cost_usd': X, 'ceiling_usd': Y}
+
+# silver row counts approaching the real historical totals
+docker compose exec trino trino --execute \
+  "SELECT protocol_name, count(*) FROM iceberg.silver.proposal_versions WHERE is_current GROUP BY 1"
+# compare against config/protocols.py's documented counts (~970 aave, ~197 uniswap, etc.)
+```
+
+Two things specifically worth checking that only a backfill can produce:
+
+1. **Re-run `make eval` and `make eval-routing`** against the now-much-larger corpus, and diff
+   against `tests/eval/baseline.json`. This is the first real chance to check whether the
+   Phase 4 relevance thresholds (fitted on 24 questions against a tiny corpus) still hold —
+   directly relevant to **KAN-3** (the threshold-drift ticket filed against this exact risk).
+2. **Multi-version silver rows** — what Phase 3/5/6 have all been waiting on. A single backfill
+   alone won't produce this (it's still one snapshot in time); it needs a backfill *followed
+   by* a later harvest that catches something actually changing (a vote count moving, a forum
+   post being edited):
+   ```bash
+   docker compose exec trino trino --execute \
+     "SELECT count(*) FROM iceberg.silver.proposal_versions WHERE NOT is_current"
+   ```
+   Until this is nonzero, `test_is_current_matters_or_says_why_it_cannot_be_shown` keeps
+   skipping rather than actually proving the SCD2 mechanism on real data, and Phase 8's
+   version-history timeline screen has nothing real to show yet either.
+
+---
+
 ## How we will know it works — status against the plan's own criteria
 
 Restating [`phase-7-plan.md`](phase-7-plan.md)'s two "how we will know" sections, marked
