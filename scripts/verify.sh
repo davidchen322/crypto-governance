@@ -46,8 +46,17 @@ export TRINO_PORT=8091
 export AIRFLOW_WEB_PORT=8083
 
 # The pytest fixtures read these, so probes hit the harness stack rather than the dev one.
+# TRINO_URL matters even more than the others: ai_agent/chains/trino_client.py's module-level
+# default is `http://localhost:8090` when this is unset — and 8090 is the *dev* stack's own
+# Trino port. On a machine with the dev stack also running, every Trino-touching test would
+# silently connect to it instead of this harness, comparing this harness's freshly-restored
+# fixture data against the dev stack's own, completely different silver — the exact class of
+# confusing, intermittent-looking mismatch that cost real time to trace back to a missing
+# export, not a race condition. TRINO_PORT alone (already set above) only controls the
+# Docker port mapping; it does nothing for the Python client's connection target.
 export MINIO_ENDPOINT="http://localhost:${MINIO_PORT}"
 export ICEBERG_REST_URI="http://localhost:${ICEBERG_REST_PORT}"
+export TRINO_URL="http://localhost:${TRINO_PORT}"
 
 VENV_PY=".venv/bin/python"
 PYTEST=".venv/bin/pytest"

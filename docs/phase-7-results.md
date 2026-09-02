@@ -291,17 +291,16 @@ doing this rather than reading logs alone:
   and pursuing it further belongs to a deliberate follow-up rather than more debugging cycles
   layered onto an already-long investigation.
 
-**None of this is a decision to make unilaterally, and none of it is made here.** Three real,
-open questions this investigation surfaced, all in the same territory: (1) CI never harvests
-real data before Phase 3+ tests run, so those tests structurally cannot pass regardless of any
-schema fix; (2) Trino stops responding partway through the same test session, for a reason not
-yet pinned down; (3) more generally, whether `-m "integration and not persistence and not
-live"` should keep sweeping every later phase's integration tests into one job at all, given
-neither of the first two problems existed back when that selection only covered Phase 0/1.
-Two honest paths on the data question specifically: give CI a real harvest step (accepting the
-live-network flakiness the `live` marker exists to keep out of the default build), or re-scope
-later-phase integration tests to run against synthetic, Phase-3-shaped fixtures the way Phase
-2's own tests already do. Left open for deliberate follow-up.
+**At the time this was written, two of these were left as open questions rather than decided
+unilaterally — a follow-up session resolved both; see "The structural fix" and "A third bug"
+below for what actually happened.** (1) CI never harvested real data before Phase 3+ tests
+ran, so those tests structurally could not pass regardless of any schema fix — resolved by a
+committed, replayable fixture rather than by picking either of the two tradeoffs originally
+framed here. (2) Trino appeared to stop responding partway through a run — turned out to be a
+missing `TRINO_URL` export, not a resource or timing issue. (3) remains genuinely open:
+whether `-m "integration and not persistence and not live"` should keep sweeping every later
+phase's integration tests into one job at all, given neither of the first two problems existed
+back when that selection only covered Phase 0/1.
 
 **CI status:** the fix commits were pushed during this session; check
 `https://github.com/davidchen322/crypto-governance/actions` for the latest run — by the time
@@ -348,22 +347,43 @@ condition, leaving every other error type to fail immediately rather than mask a
 behind a retry loop. `tests/test_phase7_trino_retry.py` pins both directions against a fake
 transport.
 
-### One thing this did *not* fully resolve, stated plainly rather than glossed over
+### A third bug, and a wrong guess corrected before it could mislead anyone
 
-While hardening the fixture restore against question (2)'s Trino issue, a **different**
-symptom of the same underlying class appeared: `test_the_corpus_matches_what_the_loader_would_
-produce` failed intermittently — always with the identical, deterministic-looking 28-chunk
-mismatch — but **only** when the full suite was run through `./scripts/verify.sh` as an
-actual backgrounded script execution in this development session; it passed every one of more
-than a dozen manual reproductions of the exact same command sequence, including redirected
-output and zero-delay chaining meant to rule out timing and buffering as the cause. That
-pattern — reproducible only under one specific execution mode of this development sandbox,
-never under a direct foreground run of the identical commands — points at something about
-*this session's* background-task execution rather than the fixture, the restore script, or
-the retry fix, none of which showed any fault under direct inspection. It was not chased
-further, on the judgment that the environment which actually matters is GitHub Actions' own
-runner, not this local sandbox's backgrounding behavior — and that is what the next real CI
-run, not more local reproduction attempts, is positioned to settle.
+`test_the_corpus_matches_what_the_loader_would_produce` failed intermittently — always with
+the identical, deterministic-looking 28-chunk mismatch — but only when the full suite ran
+through the actual `./scripts/verify.sh` script; every manual reproduction of the same
+command sequence passed. The first hypothesis written here was wrong: that this was some
+timing quirk specific to how this development session executes backgrounded shell commands,
+not worth chasing since "the environment that actually matters is GitHub Actions' own
+runner." Pushing that state and watching the real GitHub Actions run promptly disproved it —
+CI failed too, with `Connection refused` to Trino, which is a **different, more informative**
+symptom than the local "wrong data" one, and it pointed at something concrete rather than
+something environmental.
+
+The real bug: `scripts/verify.sh` exported `TRINO_PORT=8091` (for Docker's port mapping) but
+never exported `TRINO_URL` to match. `ai_agent/chains/trino_client.py`'s module-level default
+is `http://localhost:8090` when `TRINO_URL` is unset — which happens to be the **dev stack's**
+Trino port, not this harness's. In CI, nothing listens on 8090 at all, so every Trino-touching
+test failed cleanly with a connection error. Locally, this machine's dev stack had its own
+Trino sitting on exactly that port for the entire investigation — so every local test run
+**silently queried the dev stack's real, much larger, constantly-evolving corpus** instead of
+the isolated harness's freshly-restored fixture, comparing two genuinely different datasets
+and reporting a "mismatch" that had nothing to do with the fixture, the restore script, or the
+retry logic. That also explains why it looked intermittent locally: whether the comparison
+came back looking wrong depended on incidental facts about the dev stack's current state, not
+on anything this harness was actually doing.
+
+Fixed with one line — `export TRINO_URL="http://localhost:${TRINO_PORT}"` alongside the
+existing `MINIO_ENDPOINT`/`ICEBERG_REST_URI` overrides — and verified properly this time: a
+full `./scripts/verify.sh` run, from a completely clean shell (no manually pre-set
+environment variables), with the dev stack's own Trino confirmed still running on 8090 the
+entire time as a deliberate check that isolation now actually holds. **All 6 steps passed.**
+
+The lesson worth keeping: the first explanation that fits the pattern ("only fails one specific
+way, so it must be that specific thing") is not automatically the right one, and the way to
+find out is the same method this whole investigation kept landing back on — run the real
+target environment and let it disagree with you, rather than stop at a plausible-sounding local
+theory.
 
 ---
 
