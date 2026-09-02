@@ -6,7 +6,7 @@ PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 RUFF := $(VENV)/bin/ruff
 
-.PHONY: help install lint fmt test up down nuke logs ps verify verify-fast verify-live harvest check-openai silver silver-selftest sql spark-sql embed eval eval-sources clean api airflow-up airflow-down verify-airflow airflow-check airflow-cli
+.PHONY: help install lint fmt test up down nuke logs ps verify restore-fixture verify-fast verify-live harvest check-openai silver silver-selftest sql spark-sql embed eval eval-sources clean api airflow-up airflow-down verify-airflow airflow-check airflow-cli
 
 help: ## Show available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -46,10 +46,13 @@ ps: ## Show service status
 logs: ## Tail logs for all services
 	docker compose logs -f --tail=100
 
-verify: install ## Full Phase 0+1 acceptance: rebuild from zero, probe, restart, re-probe
+verify: install ## Full default-build acceptance: rebuild from zero, restore the CI fixture, probe, restart, re-probe
 	./scripts/verify.sh
 
-verify-fast: install ## Probes only, against an already-running stack
+restore-fixture: install ## Load the committed CI fixture (bronze + embeddings) into the running stack — no live calls
+	$(PY) scripts/restore_fixture.py
+
+verify-fast: install ## Probes only, against an already-running stack (run `make restore-fixture` + `make silver` first on an empty one)
 	$(PYTEST) -m "integration and not persistence and not live" -v
 
 verify-live: install ## Contract tests against the real Snapshot and Discourse APIs

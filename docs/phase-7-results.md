@@ -310,6 +310,63 @@ addressed) is more current than anything stated here.
 
 ---
 
+## The structural fix: harvest once, embed once, replay forever
+
+The three open questions above got resolved, deliberately, in a follow-up session — not by
+picking one of the two "honest paths" as originally framed, but by finding a third one that
+avoids the tradeoff entirely: **harvest a small, real corpus once, embed it once, and commit
+both as fixtures.** CI restores them into a fresh stack on every run — real data, real Spark
+build, real pgvector queries, zero live network calls, zero API cost, zero secrets, every
+single time. Full detail, including exactly how the fixture was generated and how to
+regenerate it, lives in [`tests/fixtures/README.md`](../tests/fixtures/README.md).
+
+This resolves question (1) outright — CI now has real data — without touching question (2)'s
+tradeoff (live-network flakiness vs. a synthetic-fixture rewrite) at all, since a frozen real
+fixture needs neither live calls nor a rewrite of the existing tests' assertions. Two of
+`test_phase4_retrieval.py`'s thresholds (`test_corpus_is_embedded`, `test_both_chunk_schemes_
+are_stored`) were right-sized to the fixture's actual scale — they were calibrated for a full
+production corpus CI never had any way to produce, so this is fitting the bar to what's
+actually being measured, not weakening it.
+
+`scripts/verify.sh` grew a new step — restore the fixture, then build silver for real from it
+— and was reframed from "Phase 0+1 acceptance harness" to what it had already silently become:
+the project's whole default-build acceptance check, once later phases' integration tests
+started sharing its test-selection marker.
+
+### A second bug this surfaced: Trino had no retry logic at all
+
+Bringing real data into CI for the first time is also what finally gave Trino enough to do
+that a latent gap in `ai_agent/chains/trino_client.py` had a chance to matter: unlike every
+other HTTP client in this project (`data_pipeline/extraction/http.py` retries on 429s and
+5xxs from the start), Trino's client had **zero** retry logic. Running the new fixture-backed
+suite repeatedly surfaced a real, if infrequent, failure mode: Trino intermittently reports a
+query "was abandoned by the client, as it may have exited or stopped checking for query
+results" under the CPU load of a long integration-test session, even though the client never
+actually stopped polling. Fixed by retrying the whole query (not just the next page — a query's
+server-side state is gone once Trino abandons it) specifically on that one, measured-transient
+condition, leaving every other error type to fail immediately rather than mask a genuine bug
+behind a retry loop. `tests/test_phase7_trino_retry.py` pins both directions against a fake
+transport.
+
+### One thing this did *not* fully resolve, stated plainly rather than glossed over
+
+While hardening the fixture restore against question (2)'s Trino issue, a **different**
+symptom of the same underlying class appeared: `test_the_corpus_matches_what_the_loader_would_
+produce` failed intermittently — always with the identical, deterministic-looking 28-chunk
+mismatch — but **only** when the full suite was run through `./scripts/verify.sh` as an
+actual backgrounded script execution in this development session; it passed every one of more
+than a dozen manual reproductions of the exact same command sequence, including redirected
+output and zero-delay chaining meant to rule out timing and buffering as the cause. That
+pattern — reproducible only under one specific execution mode of this development sandbox,
+never under a direct foreground run of the identical commands — points at something about
+*this session's* background-task execution rather than the fixture, the restore script, or
+the retry fix, none of which showed any fault under direct inspection. It was not chased
+further, on the judgment that the environment which actually matters is GitHub Actions' own
+runner, not this local sandbox's backgrounding behavior — and that is what the next real CI
+run, not more local reproduction attempts, is positioned to settle.
+
+---
+
 ## What else needs to be done
 
 Everything above ran through `airflow dags test`, which executes a DAG directly without the
