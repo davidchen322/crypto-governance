@@ -74,7 +74,12 @@ def load_proposal_index() -> dict[str, dict]:
     }
 
 
-def load_forum_index() -> dict[int, dict]:
+def load_forum_index() -> dict[tuple[str, int], dict]:
+    """Keyed by (protocol, topic_id), not topic_id alone — Discourse topic_ids are only
+    unique within one forum installation. Keying on topic_id alone silently let one
+    protocol's topic overwrite another's in this dict whenever two forums happened to
+    reuse the same number (confirmed real in this corpus: topic 7 exists on Arbitrum's,
+    Uniswap's, and Optimism's forums as three unrelated threads)."""
     rows = trino("""
         SELECT DISTINCT topic_id, forum_host, topic_slug, topic_title, protocol_name
         FROM iceberg.silver.forum_posts WHERE is_current
@@ -83,7 +88,7 @@ def load_forum_index() -> dict[int, dict]:
     for r in rows:
         if len(r) < 5:
             continue
-        index[int(r[0])] = {
+        index[(r[4], int(r[0]))] = {
             "url": f"https://{r[1]}/t/{r[2]}/{r[0]}",
             "title": r[3],
             "protocol": r[4],
@@ -125,9 +130,12 @@ def main(argv: list[str]) -> int:
                 if meta["discussion"]:
                     print(f"    {DIM}forum: {meta['discussion']}{RESET}")
             else:
-                meta = forums.get(int(item["topic_id"]))
+                meta = forums.get((item["protocol"], int(item["topic_id"])))
                 if not meta:
-                    print(f"  {YELLOW}! NOT IN SILVER: topic {item['topic_id']}{RESET}")
+                    print(
+                        f"  {YELLOW}! NOT IN SILVER: {item['protocol']} topic "
+                        f"{item['topic_id']}{RESET}"
+                    )
                     missing += 1
                     continue
                 print(f"  · [{meta['protocol']}] {meta['title'][:64]}")

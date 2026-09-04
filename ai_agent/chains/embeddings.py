@@ -43,6 +43,41 @@ MAX_BATCH_INPUTS = 128
 MAX_BATCH_TOKENS = 100_000
 
 
+def forum_chunk_index(post_id: int | None, local_index: int) -> int:
+    """A stable, topic-wide-unique chunk_index for one post's chunk within its topic.
+
+    `chunk_forum_post()` numbers a post's own chunks from 0 — but `document_id` for forum
+    content is the TOPIC id, shared by every post in it. Two different posts' first chunk
+    both land at (document_id, chunk_index) = (topic_id, 0) unless something folds the post's
+    own identity in. Found via a real collision: topic 30691 had 19 distinct posts sharing
+    chunk_index 0, each with genuinely different content (confirmed by 19 distinct
+    source_content_hash values) — not duplicates, just an ambiguous address. The visible
+    damage was in citations: `chunk_ref` (synthesis.py) and `make search`'s own output
+    (cli.py) render as `forum:{document_id}#{chunk_index}`, which silently pointed at
+    whichever of several real posts happened to match, not a specific one.
+
+    The first version of this keyed on `post_number` — Discourse's 1-indexed position within
+    the topic — on the assumption that it identifies a post. It does not: a real corpus row
+    surfaced two DIFFERENT post_ids sharing `post_number = 2` in the same topic, both marked
+    `is_current`. Discourse renumbers `post_number` when posts are deleted or moved, so it
+    reflects current position, not permanent identity, and reusing it here just moved the
+    collision rather than closing it (2,219 groups down to 102, not zero). `post_id` is the
+    field the schema actually declares `NOT NULL` and unique per post — use that instead.
+
+    100 is a safe multiplier: no real post is chunked into anywhere near 100 pieces, and
+    `chunk_index` is a 32-bit INT, so this only overflows past a ~21 million post_id — this
+    corpus's real max is 78,094.
+
+    `post_id` should never be missing given the schema's NOT NULL, but this stays defensive
+    rather than trusting that a constraint written today was equally true of every row ever
+    inserted; a post that violates it is dropped and counted rather than risking a collision
+    by guessing.
+    """
+    if post_id is None:
+        raise ValueError("post_id is required to address a forum post's chunks uniquely")
+    return post_id * 100 + local_index
+
+
 @dataclass
 class PendingChunk:
     source: str
@@ -110,17 +145,24 @@ def load_silver_chunks() -> list[PendingChunk]:
 
     posts = trino_query("""
         SELECT cast(topic_id AS varchar) AS topic_id, protocol_name, content_hash,
-               topic_title, body_text,
+               topic_title, body_text, post_id,
                cast(post_created_at AS varchar) AS document_date,
                cast(valid_from AS varchar) AS valid_from,
                cast(valid_to AS varchar) AS valid_to
         FROM iceberg.silver.forum_posts
         WHERE is_current
     """)
+    dropped_unaddressable = 0
     for row in posts:
         label = BY_NAME[row["protocol_name"]].label
         if is_boilerplate_topic(row["topic_title"]):
             dropped_boilerplate += 1
+            continue
+        if row["post_id"] is None:
+            # Can't be addressed uniquely against the topic's other posts — see
+            # forum_chunk_index's docstring. The schema declares this NOT NULL; counted
+            # rather than trusting that blindly or guessing a substitute that might collide.
+            dropped_unaddressable += 1
             continue
         chunks = chunk_forum_post(row["topic_title"], row["body_text"], protocol=label)
         for chunk in chunks:
@@ -132,11 +174,16 @@ def load_silver_chunks() -> list[PendingChunk]:
             pending.append(
                 PendingChunk(
                     source="forum",
-                    document_id=row["topic_id"],
+                    # protocol-qualified: Discourse topic_ids are only unique WITHIN one
+                    # forum installation, not across them — a real corpus row had topic 7
+                    # on Arbitrum's, Uniswap's, AND Optimism's forums, three unrelated
+                    # posts. A bare topic_id is not a complete identity for forum content;
+                    # (protocol, topic_id) is.
+                    document_id=f"{row['protocol_name']}:{row['topic_id']}",
                     protocol_name=row["protocol_name"],
                     source_content_hash=row["content_hash"],
                     chunk_type="forum_post",
-                    chunk_index=chunk.index,
+                    chunk_index=forum_chunk_index(row["post_id"], chunk.index),
                     heading=chunk.heading,
                     text=chunk.text,
                     tokens=chunk.tokens,
@@ -147,10 +194,11 @@ def load_silver_chunks() -> list[PendingChunk]:
                 )
             )
 
-    if dropped_boilerplate or dropped_runt:
+    if dropped_boilerplate or dropped_runt or dropped_unaddressable:
         print(
             f"  curation: skipped {dropped_boilerplate} boilerplate post(s), "
-            f"{dropped_runt} chunk(s) under {MIN_BODY_TOKENS} body tokens"
+            f"{dropped_runt} chunk(s) under {MIN_BODY_TOKENS} body tokens, "
+            f"{dropped_unaddressable} post(s) missing post_id"
         )
     return pending
 

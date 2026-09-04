@@ -15,11 +15,23 @@ Positives and negatives are scored differently, on purpose:
   * Positive questions score recall — of the documents that should have come back, how many
     did. The distance threshold is DISABLED here, because recall measures the ranking, not
     the cutoff.
-  * Negative questions score the threshold — with it ENABLED, did anything survive? The
-    corpus cannot answer them, so any surviving chunk is a false positive that the analyst
-    would go on to write a confident answer from.
+  * Negative questions score what a user would actually see: retrieval's distance/gap cutoff
+    is a cheap PRE-filter (it exists to limit how many chunks pay for an LLM judgment, not to
+    be the last word on relevance — Phase 4 measured a real case, documented in
+    `ai_agent/graph/synthesis.py`, that no distance threshold can reject), then the same
+    relevance judge synthesis calls before citing anything is run on whatever survives it. A
+    chunk only counts as a leak if it clears BOTH — that is what "clean" means below.
 
 Reporting them as one blended number would let a loose threshold hide inside good recall.
+
+Corpus growth degrades the raw distance/gap numbers over time — more real content means more
+near-neighbors sitting at moderate distances, so a cutoff fitted against one corpus size drifts
+as it grows (measured directly going from 1,593 to 29,530 chunks: negatives-clean fell from 5/5
+to 1/5 at the retrieval layer alone). The judge doesn't have that failure mode — it scores each
+candidate on content, per question, so it isn't tied to a fixed number from whenever it was
+last fitted. That is why the retrieval-only cutoff is reported here as a secondary, diagnostic
+number rather than the headline: it is a real thing to watch for cost/latency, but the judge is
+what actually stands between a candidate and a citation in production.
 """
 
 from __future__ import annotations
@@ -42,6 +54,7 @@ from ai_agent.chains.retrieval import (  # noqa: E402
     SearchResult,
     search,
 )
+from ai_agent.graph.synthesis import RELEVANT_SCORE, judge  # noqa: E402
 
 
 def corpus_chunks() -> int:
@@ -72,10 +85,15 @@ BOLD, DIM, GREEN, RED, YELLOW, RESET = (
 
 
 def expected_key(item: dict) -> tuple[str, str]:
-    """Normalise a label to (source, document_id) — the shape retrieval returns."""
+    """Normalise a label to (source, document_id) — the shape retrieval returns.
+
+    Forum document_id is protocol-qualified (`{protocol}:{topic_id}`) — Discourse topic_ids
+    are only unique within one forum installation, not across them. A bare topic_id here
+    would silently accept a different protocol's same-numbered topic as a match.
+    """
     if item["source"] == "proposal":
         return ("proposal", str(item["id"]))
-    return ("forum", str(item["topic_id"]))
+    return ("forum", f"{item['protocol']}:{item['topic_id']}")
 
 
 def retrieved_keys(results: list[SearchResult]) -> set[tuple[str, str]]:
@@ -84,16 +102,23 @@ def retrieved_keys(results: list[SearchResult]) -> set[tuple[str, str]]:
 
 def score_question(q: dict, k: int, threshold: float, min_gap: float) -> dict:
     if q["kind"] == "negative":
-        # Cutoffs ON: the question is whether anything survives them.
+        # Stage 1: the cheap pre-filter. Cutoffs ON — whatever survives this is what would
+        # reach the judge in production; it is diagnostic here, not the pass/fail bar.
         hits = search(q["question"], k=k, max_distance=threshold, min_gap=min_gap)
+        # Stage 2: the actual safety net. Only a chunk that ALSO clears the relevance judge
+        # would be cited to a user — score it the same way synthesis does before answering.
+        scores = judge(q["question"], hits) if hits else {}
+        survivors = [i for i, s in scores.items() if s >= RELEVANT_SCORE]
         return {
             "id": q["id"],
             "kind": q["kind"],
-            "passed": len(hits) == 0,
-            "leaked": len(hits),
-            "closest": round(min((h.distance for h in hits), default=float("nan")), 4)
+            "passed": len(survivors) == 0,
+            "retrieval_leaked": len(hits),
+            "retrieval_closest": round(min((h.distance for h in hits), default=float("nan")), 4)
             if hits
             else None,
+            "judge_leaked": len(survivors),
+            "judge_scores": [scores.get(i) for i in range(len(hits))],
         }
 
     # Cutoffs OFF: recall measures the ranking and the diversity policy, not the cutoff.
@@ -144,11 +169,14 @@ def main(argv: list[str] | None = None) -> int:
         for s in scored:
             mark = f"{GREEN}pass{RESET}" if s["passed"] else f"{RED}fail{RESET}"
             if s["kind"] == "negative":
-                detail = (
-                    "nothing retrieved"
-                    if s["passed"]
-                    else f"{s['leaked']} leaked (closest {s['closest']})"
-                )
+                if s["passed"]:
+                    detail = (
+                        "nothing retrieved"
+                        if not s["retrieval_leaked"]
+                        else f"judge suppressed {s['retrieval_leaked']} pre-filtered chunk(s)"
+                    )
+                else:
+                    detail = f"{s['judge_leaked']} leaked past the judge (scores {s['judge_scores']})"
             else:
                 detail = f"recall {s['matched']}/{s['expected']}"
                 if s["missed"]:
@@ -171,14 +199,32 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  {BOLD}macro{RESET}          {macro:.2f}   (mean per-question recall)")
 
     print(
-        f"\n{BOLD}negatives{RESET}  (distance<={args.threshold}, "
-        f"gap>={args.min_gap} — measuring the cutoff)"
+        f"\n{BOLD}negatives{RESET}  (end-to-end: retrieval pre-filter + relevance judge — "
+        f"what a user would actually see)"
     )
     print(f"  clean          {clean}/{len(negatives)}")
     for s in negatives:
         if not s["passed"]:
             print(
-                f"  {YELLOW}leak{RESET}  {s['id']}: {s['leaked']} chunk(s), closest {s['closest']}"
+                f"  {YELLOW}leak{RESET}  {s['id']}: {s['judge_leaked']} chunk(s) past the judge "
+                f"(pre-filter passed {s['retrieval_leaked']}, scores {s['judge_scores']})"
+            )
+
+    # The pre-filter's own number, kept separate on purpose: it drifts as the corpus grows
+    # (this is the number that fell from 5/5 to 1/5 clean going from 1,593 to 29,530 chunks),
+    # but that drift is a cost/latency signal, not a correctness one, as long as the judge
+    # above is still catching what actually matters.
+    retrieval_clean = sum(1 for s in negatives if s["retrieval_leaked"] == 0)
+    print(
+        f"\n{DIM}retrieval pre-filter only (distance<={args.threshold}, gap>={args.min_gap}) "
+        f"— cost control, not the safety net:{RESET}"
+    )
+    print(f"  {DIM}clean          {retrieval_clean}/{len(negatives)}{RESET}")
+    for s in negatives:
+        if s["retrieval_leaked"]:
+            print(
+                f"  {DIM}{s['id']}: {s['retrieval_leaked']} chunk(s) reached the judge, "
+                f"closest {s['retrieval_closest']}{RESET}"
             )
 
     # The other half of the cutoff's behaviour, which recall alone cannot see.
@@ -204,6 +250,7 @@ def main(argv: list[str] | None = None) -> int:
                     "micro_recall": round(micro, 4),
                     "macro_recall": round(macro, 4),
                     "negatives_clean": clean,
+                    "negatives_retrieval_prefilter_clean": retrieval_clean,
                     "negatives_total": len(negatives),
                     "positives_surviving_cutoffs": len(positives) - len(rejected),
                     "positives_total": len(positives),

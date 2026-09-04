@@ -411,6 +411,11 @@ For a portfolio deployment the cheapest credible target is a single small VM run
 stack, plus managed Postgres, plus a scheduled job runner. Full managed-service parity is the
 expensive version and only worth it if you're demonstrating cloud architecture specifically.
 
+The data half of this doesn't have to wait for Phase 8–10 to exist — `docs/cloud-cutover-plan.md`
+scopes moving the bronze/silver/embeddings already built by Phase 7 into S3 and RDS on its own,
+leaving compute (this phase's actual remaining scope) pointed at the migrated data whenever it's
+ready to move.
+
 - **Demo:** A public URL you can put on a résumé.
 - **Exit criteria:** Deploy reproducible from IaC, documented monthly cost ceiling, billing alerts.
 

@@ -14,6 +14,7 @@ from ai_agent.chains.embeddings import (
     PendingChunk,
     batches,
     embed_batch,
+    forum_chunk_index,
 )
 
 
@@ -31,6 +32,48 @@ def make_chunk(index: int, tokens: int = 100) -> PendingChunk:
         valid_from="2026-08-15 00:00:00",
         valid_to=None,
     )
+
+
+# --------------------------------------------------------------------------
+# Forum chunk addressing
+# --------------------------------------------------------------------------
+
+
+def test_two_posts_in_the_same_topic_get_different_indices():
+    """The actual bug, reproduced directly: chunk_forum_post() numbers each post's own
+    chunks from 0, but document_id is the topic, shared by every post in it. Found via a
+    real topic with 19 posts all colliding at chunk_index 0 — genuinely different content,
+    identical (document_id, chunk_index) address. Two posts' first chunk must not match."""
+    post_1_chunk_0 = forum_chunk_index(post_id=1, local_index=0)
+    post_2_chunk_0 = forum_chunk_index(post_id=2, local_index=0)
+    assert post_1_chunk_0 != post_2_chunk_0
+
+
+def test_two_posts_sharing_a_post_number_still_get_different_indices():
+    """The first fix keyed on post_number and only closed 95% of the real collisions — a
+    real corpus row had two different post_ids sharing post_number 2 in the same topic,
+    both marked current, because Discourse renumbers post_number on deletion/move. post_id
+    is the field the schema actually declares unique; this is the case that caught the
+    first fix being wrong."""
+    assert forum_chunk_index(post_id=62895, local_index=0) != forum_chunk_index(
+        post_id=51020, local_index=0
+    )
+
+
+def test_index_is_stable_and_traceable():
+    """Not just "different" — deterministic and decodable, so a citation is reproducible
+    and a human can recover which post and which local chunk it names."""
+    assert forum_chunk_index(post_id=3, local_index=5) == 305
+    assert forum_chunk_index(post_id=3, local_index=5) == forum_chunk_index(3, 5)
+
+
+def test_missing_post_id_raises_rather_than_guessing():
+    """post_id is NOT NULL in the silver schema, but this stays defensive rather than
+    trusting that blindly. Guessing a fallback index risks manufacturing a new collision
+    silently; the caller (load_silver_chunks) is expected to catch this and count the post
+    as dropped."""
+    with pytest.raises(ValueError):
+        forum_chunk_index(post_id=None, local_index=0)
 
 
 # --------------------------------------------------------------------------

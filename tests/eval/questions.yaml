@@ -161,8 +161,8 @@
   expect:
     - {source: proposal, id: "0x3fda3c04fa106ad45173011ef4dfa5db2f14cd35c3c3a7a40f067a44cbadd5f4"}
     - {source: proposal, id: "0x5ae3426216321df66a67eb677874b725f80e51888ad2da72b382b21669c554ee"}
-    - {source: forum, topic_id: 26162}
-    - {source: forum, topic_id: 26150}
+    - {source: forum, protocol: uniswap, topic_id: 26162}
+    - {source: forum, protocol: uniswap, topic_id: 26150}
   notes: Deliberately spans both sources — proposals and their forum threads.
 
 # ==========================================================================
@@ -173,7 +173,7 @@
   kind: cross_source
   question: What did the Uniswap forum say about activating v4 protocol fees?
   expect:
-    - {source: forum, topic_id: 26162}
+    - {source: forum, protocol: uniswap, topic_id: 26162}
     - {source: proposal, id: "0x3fda3c04fa106ad45173011ef4dfa5db2f14cd35c3c3a7a40f067a44cbadd5f4"}
   notes: >
     Twenty-post thread with the same title as the proposal. The cleanest cross-source
@@ -183,7 +183,7 @@
   kind: cross_source
   question: What did delegates ask about the Four for V4 deployment?
   expect:
-    - {source: forum, topic_id: 26150}
+    - {source: forum, protocol: uniswap, topic_id: 26150}
     - {source: proposal, id: "0x5ae3426216321df66a67eb677874b725f80e51888ad2da72b382b21669c554ee"}
   notes: >
     RFC thread, 8 posts. Checked: L2BEAT's governance team responded, and GFX Labs is
@@ -195,7 +195,7 @@
   kind: cross_source
   question: What is the discussion around activating Aave V4 on Ethereum mainnet?
   expect:
-    - {source: forum, topic_id: 24293}
+    - {source: forum, protocol: aave, topic_id: 24293}
   notes: >
     Twenty-post ARFC thread. No matching Snapshot proposal in the current window —
     a case where the forum is ahead of the vote, which is exactly the early-warning
@@ -205,14 +205,14 @@
   kind: cross_source
   question: What does the Optimism Collective's working constitution establish?
   expect:
-    - {source: forum, topic_id: 55}
+    - {source: forum, protocol: optimism, topic_id: 55}
   notes: Forum-only, 20 posts. Tests that forum content is reachable without a proposal anchor.
 
 - id: cross-lombard-collateral-risk
   kind: cross_source
   question: Has anyone raised concerns about Lombard LBTC as Aave collateral?
   expect:
-    - {source: forum, topic_id: 25480}
+    - {source: forum, protocol: aave, topic_id: 25480}
   notes: >
     A single-post thread asking about a 13 August backing-strategy change and its effect
     on collateral status. Exactly the shape of thing a fund would want flagged, and a
@@ -222,7 +222,7 @@
   kind: cross_source
   question: What is the proposed next era of ENS DAO governance?
   expect:
-    - {source: forum, topic_id: 22329}
+    - {source: forum, protocol: ens, topic_id: 22329}
   notes: Draft executable thread, 20 posts. Forum-only.
 
 # ==========================================================================
