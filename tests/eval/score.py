@@ -176,7 +176,9 @@ def main(argv: list[str] | None = None) -> int:
                         else f"judge suppressed {s['retrieval_leaked']} pre-filtered chunk(s)"
                     )
                 else:
-                    detail = f"{s['judge_leaked']} leaked past the judge (scores {s['judge_scores']})"
+                    detail = (
+                        f"{s['judge_leaked']} leaked past the judge (scores {s['judge_scores']})"
+                    )
             else:
                 detail = f"recall {s['matched']}/{s['expected']}"
                 if s["missed"]:
