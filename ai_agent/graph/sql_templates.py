@@ -82,7 +82,7 @@ TEMPLATES: dict[str, dict[str, Any]] = {
     },
     "list_proposals": {
         "description": "List proposals, optionally by protocol, state and creation date.",
-        "params": ["protocol", "state", "since", "limit"],
+        "params": ["protocol", "state", "since", "limit", "offset"],
         "sql": """
             SELECT proposal_id, protocol_name, title, proposal_state, proposal_created,
                    vote_count
@@ -91,7 +91,7 @@ TEMPLATES: dict[str, dict[str, Any]] = {
               AND ({protocol} IS NULL OR protocol_name = {protocol})
               AND ({state} IS NULL OR proposal_state = {state})
               AND ({since} IS NULL OR proposal_created >= from_iso8601_timestamp({since}))
-            ORDER BY proposal_created DESC LIMIT {limit}
+            ORDER BY proposal_created DESC OFFSET {offset} LIMIT {limit}
         """,
     },
     "get_proposal": {
@@ -100,10 +100,29 @@ TEMPLATES: dict[str, dict[str, Any]] = {
         "sql": """
             SELECT proposal_id, protocol_name, title, body, proposal_state,
                    author, voting_start, voting_end, vote_count, scores_total,
-                   proposal_created
+                   proposal_created, quorum, choices, scores, discussion_url
             FROM iceberg.silver.proposal_versions
             WHERE is_current AND proposal_id = {proposal_id}
         """,
+    },
+    "get_proposal_history": {
+        "description": "Every known version of one proposal, oldest first.",
+        "params": ["proposal_id"],
+        "sql": """
+            SELECT proposal_id, protocol_name, title, proposal_state,
+                   vote_count, scores_total, content_hash,
+                   cast(valid_from AS varchar) AS valid_from,
+                   cast(valid_to AS varchar) AS valid_to,
+                   is_current
+            FROM iceberg.silver.proposal_versions
+            WHERE proposal_id = {proposal_id}
+            ORDER BY valid_from ASC
+        """,
+        # No `WHERE is_current` on purpose — the whole point is every version, not just the
+        # current one. `is_current` still appears above (selected, not filtered) so this
+        # deliberately trips the render()-level guard below for the right reason: a reader
+        # of that guard's failure should find a template that means to return every version,
+        # not one that forgot to constrain to the current one.
     },
 }
 
@@ -152,6 +171,11 @@ def render(name: str, params: dict[str, Any]) -> str:
         if key == "limit":
             n = int(raw) if raw is not None else 10
             values[key] = str(max(1, min(n, 100)))
+            continue
+
+        if key == "offset":
+            n = int(raw) if raw is not None else 0
+            values[key] = str(max(0, n))
             continue
 
         if key == "proposal_id":

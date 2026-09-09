@@ -9,7 +9,10 @@ query need no key; real multi-tenant auth is Phase 12 and lives entirely in
 
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend_api.routes import chat, health, proposals
 
@@ -20,6 +23,18 @@ app = FastAPI(
         "on-chain contract source."
     ),
     version="0.1.0",
+)
+
+# Phase 8's dashboard is a browser app calling this API directly (no server-side proxy —
+# there is nothing yet for one to broker, per the no-auth stance above). Origins are
+# env-configurable so a later deployment doesn't need a code change, comma-separated,
+# defaulting to the Next.js dev server.
+_origins = os.getenv("DASHBOARD_ORIGINS", "http://localhost:3000").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _origins if o.strip()],
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
 )
 
 app.include_router(health.router)

@@ -57,6 +57,26 @@ class ProposalDetail(BaseModel):
     vote_count: int | None = None
     scores_total: float | None = None
     proposal_created: str | None = None
+    quorum: float | None = None
+    choices: list[str] | None = None
+    scores: list[float] | None = None
+    discussion_url: str | None = None
+
+
+class ProposalVersion(BaseModel):
+    """One SCD2 row from `proposal_versions` — used only by `/history`, which returns every
+    version rather than just the current one `ProposalDetail` reads."""
+
+    proposal_id: str
+    protocol_name: str
+    title: str | None = None
+    proposal_state: str | None = None
+    vote_count: int | None = None
+    scores_total: float | None = None
+    content_hash: str
+    valid_from: str
+    valid_to: str | None = None
+    is_current: bool
 
 
 class HealthComponent(BaseModel):

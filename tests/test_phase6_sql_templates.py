@@ -57,3 +57,49 @@ def test_quote_length_cap_still_admits_the_widened_ceiling():
     weakening the enum-validated parameters, which never approach either ceiling."""
     sql = render("list_proposals", {"protocol": "aave", "limit": 5})
     assert "aave" in sql
+
+
+# --------------------------------------------------------------------------
+# get_proposal_history (Phase 8) — every version, deliberately not current-only
+# --------------------------------------------------------------------------
+
+
+def test_get_proposal_history_renders_without_an_is_current_filter():
+    """The whole point of this template is every version, not just the current one — the
+    opposite of every other template here. `is_current` still appears (selected, not
+    filtered), which is what lets it pass render()'s "did you forget is_current" guard for
+    the right reason rather than bypassing it."""
+    sql = render("get_proposal_history", {"proposal_id": "0x4ec0c13baf55472ecd53"})
+    assert "proposal_id = '0x4ec0c13baf55472ecd53'" in sql
+    assert "is_current" in sql
+    assert "WHERE is_current" not in sql
+    assert "ORDER BY valid_from ASC" in sql
+
+
+def test_get_proposal_history_rejects_the_same_hostile_ids(bad_id: str = "0x123' OR '1'='1"):
+    """Reuses get_proposal's exact proposal_id validation path in render() — one bad id
+    shape is enough to prove that, not the full parametrized list again."""
+    with pytest.raises(TemplateError):
+        render("get_proposal_history", {"proposal_id": bad_id})
+
+
+# --------------------------------------------------------------------------
+# list_proposals offset (Phase 8) — pagination past the 100-row limit cap
+# --------------------------------------------------------------------------
+
+
+def test_list_proposals_defaults_offset_to_zero():
+    sql = render("list_proposals", {"protocol": "aave", "limit": 20})
+    assert "OFFSET 0" in sql
+
+
+def test_list_proposals_offset_advances_the_page():
+    sql = render("list_proposals", {"protocol": "aave", "limit": 20, "offset": 100})
+    assert "OFFSET 100" in sql
+
+
+def test_list_proposals_rejects_a_negative_offset_by_clamping_to_zero():
+    """Consistent with `limit`'s own clamp-not-reject handling of an out-of-range value —
+    a negative offset is nonsensical, not hostile, so it is corrected rather than raising."""
+    sql = render("list_proposals", {"protocol": "aave", "limit": 20, "offset": -5})
+    assert "OFFSET 0" in sql
